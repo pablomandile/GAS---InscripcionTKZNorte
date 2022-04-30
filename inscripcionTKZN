@@ -1,0 +1,255 @@
+function emailOnFormSubmit(e) {
+  var fechaHoy = new Date();
+  var dia = fechaHoy.getDate();
+  var btPagoTkClases = "";
+  var tkClasesAPagar = 0;
+  var aPagar = 0;
+  var btPago = '';
+  var valTarjeta = 0;
+  var subject = "Inscripción a la ";
+  var activeSheet = SpreadsheetApp.getActiveSheet();
+  var activeRow = activeSheet.getLastRow();
+  var sheet = activeSheet.getDataRange().getValues();
+        colTemporal = sheet[0].indexOf('Nombre')+1;  
+      var nombre = activeSheet.getRange(activeRow, colTemporal).getValue();
+        colTemporal = sheet[0].indexOf('Apellido')+1;  
+      var apellido = activeSheet.getRange(activeRow, colTemporal).getValue();
+        colTemporal = sheet[0].indexOf('Dirección de correo electrónico')+1;  
+      var mail = activeSheet.getRange(activeRow, colTemporal).getValue();
+        colTemporal = sheet[0].indexOf('Teléfono celular')+1;  
+      var celular = activeSheet.getRange(activeRow, colTemporal).getValue();
+          colTemporal = sheet[0].indexOf('¿Dónde vivís? (Ciudad / Provincia / Barrio)')+1;  
+      var ciudad = activeSheet.getRange(activeRow, colTemporal).getValue();
+        colTemporal = sheet[0].indexOf('¿EN CUÁL DE ELLAS TE GUSTARÍA INSCRIBIRTE?')+1;  
+      var eleccionTk = activeSheet.getRange(activeRow, colTemporal).getValue();
+        colTemporal = sheet[0].indexOf('¿Deseas recibir nuestro Boletín informativo?')+1;  
+      var eleccionBoletin = activeSheet.getRange(activeRow, colTemporal).getValue();  var textoTK = "";
+
+  var tieneTK = chequeoTkActiva(mail, nombre, apellido, eleccionTk, ciudad, celular, eleccionBoletin);
+  // Sólo se chequea si tiene tk activa para tk clases, para el resto no importa porque siempre se cobra igual
+  // no importa el momento del mes en el que se inscriba
+
+  var preciosTarjetas = cargoPrecios();
+
+  switch (eleccionTk)  {
+    case 'TARJETA KADAMPA CLASES':
+      if(tieneTK == 'TARJETA KADAMPA CLASES'){
+        //si ya tenía tk clases le cobra siempre el monto completo porque se paga el 5 de cada mes
+        tkClasesAPagar = preciosTarjetas.TKClases1;
+        btPagoTkClases = preciosTarjetas.TKClases1Boton;
+      } else {
+        // si es nueva membresía tk clases le cobra el proporcional según la fecha
+        // para facilitar que se inscriban en cualquier momento del mes
+          if (dia >= 1 && dia < 11){
+            tkClasesAPagar = preciosTarjetas.TKClases1;
+            btPagoTkClases = preciosTarjetas.TKClases1Boton;
+          } else if (dia > 10 && dia < 21){
+            tkClasesAPagar = preciosTarjetas.TKClases2;
+            btPagoTkClases = preciosTarjetas.TKClases2Boton;
+          } else if (dia > 20 && dia <= 31){
+            tkClasesAPagar = preciosTarjetas.TKClases3;
+            btPagoTkClases = preciosTarjetas.TKClases3Boton;
+          }
+        }
+        valTarjeta = preciosTarjetas.TKClases1;
+        aPagar = tkClasesAPagar;
+        btPago = btPagoTkClases;
+        textoTK = ", pero <br>" +
+        "también podés sumarte en cualquier otro momento abonando un valor proporcional. <br>" +
+        "Aquí te compartimos la escala de precios que varían según la fecha en la cual realices el pago:</p>" +
+        "<p>- Si abonas del 01 al 10: El valor es $"+preciosTarjetas.TKClases1+ " <br>" +
+        "- Si abonas del 11 al 20: El valor es $"+preciosTarjetas.TKClases2+ " <br>" +
+        "- Si abonas del 21 al 30: El valor es $"+preciosTarjetas.TKClases3 + "</p> <br>";
+    break;
+    case 'TARJETA KADAMPA CORAZÓN':
+        aPagar = preciosTarjetas.TKCorazon;
+        btPago = preciosTarjetas.TKCorazonBoton;
+        valTarjeta = preciosTarjetas.TKCorazon;
+        textoTK = ".<br>";
+    break; 
+    case 'TARJETA KADAMPA BENEFACTOR':
+        aPagar = preciosTarjetas.TKBenefactor;
+        btPago = preciosTarjetas.TKBenefactorBoton;
+        valTarjeta = preciosTarjetas.TKBenefactor;
+        textoTK = ".<br>";
+    break; 
+    default:
+      aPagar = 0
+    break;
+  }  
+  subject = subject + eleccionTk;
+  var lineaPago1 = "<br/><font size='3' color=\"black\"><strong>👉 PODÉS ABONAR CON TARJETA DE DÉBITO/CRÉDITO: </strong></font>";
+  var lineaPago2 = "<br/><a href='"+ btPago + "'><img src='https://meditarenargentina.org/wp-content/uploads/2021/12/btnabonar.png'" +
+                    "height='59' width='319'></a>";
+  
+  // emailBody is for those devices that can't render HTML, is plain text
+  var emailBody = "¡Hola! " + "\nGracias por tu inscripción la tarjeta Kadampa. "+
+    "\nPróximamente recibirás un email con más detalles y tu información de pago." + "\nMuchas Gracias";
+  var htmlBody =  "<font size = '3' color=\"black\">¡Hola " + "<font color=\"black\"><strong>" + 
+  nombre + " " + apellido + "</strong></font>" + "!</ font>" +
+  "<p>Muchas gracias por inscribirte a la tarjeta Kadampa! ☺️💞</p>" +
+  "<p>Te contamos que el valor de la " + eleccionTk + " es de $" + valTarjeta + " abonando del 1 al 10" + textoTK +
+  "<br><font size='3' color=\"black\">Tu importe a abonar es: $" + aPagar + "</font>" + lineaPago1 + lineaPago2 +
+  "<p>También tenés la opción de abonar con Transferencia Bancaria, aquí te dejamos nuestros datos.</p>"+
+  "<section>Nombre: CENTRO DE MEDITACIÓN KADAMPA ARGENTINA <br>"+
+  "Banco Santander Río Cuenta Corriente en Pesos Nro:<br>"+
+  "001896/8 Sucursal: 429 <br>"+
+  "CUIT 30-71440026-2 <br>"+
+  "CBU: 0720429020000000189686 <br>"+
+  "ALIAS: PAZ.PURA.INTERIOR <br></section>" +
+  "<p>Para agilizar la registración de tu pago, te pedimos que nos ayudes enviándonos" +
+  "una foto del comprobante de pago por mail. <br>"+
+  "¡¡Muchas gracias!!</p>"+
+  "<p>Cuando recibamos el comprobante de pago, te contactamos para enviarte la información " +
+  "necesaria para que puedas acceder a la transmisión online de las actividades. </p>"+
+  "<p>¡ESTAMOS MUY FELICES QUE TE HAYAS SUMADO A LAS ACTIVIDADES"+
+  "DE NUESTRO CENTRO DE MEDITACION KADAMPA! </p>"+
+  "<p>Esperamos que lo disfrutes, te envío un cálido saludo.</p>"
+
+  // More info for Advanced Options Parameters 
+  // https://developers.google.com/apps-script/reference/mail/mail-app#sendEmail(String,String,String,Object)
+  var advancedOpts = { name: "Inscripciones - CMKA", htmlBody: htmlBody};
+  MailApp.sendEmail(mail, subject, emailBody, advancedOpts);
+  // Actualiza los campos en la planilla de cálculo del evento
+  activeSheet.getRange(activeRow, 12).setValue("ENVIADA");
+  activeSheet.getRange(activeRow, 11).setValue('$' + aPagar);
+  activeSheet.getRange(activeRow, 1).setBackground('#b3d1ff');
+  activeSheet.getRange(activeRow, 12).setBackground('green');
+  activeSheet.getRange(activeRow, 12).setFontColor('white');
+  SpreadsheetApp.flush();
+}
+
+function chequeoTkActiva(correo, nombre, apellido, eleccionTK, ciudad, celular, eleccionBoletin){
+  var tkss = SpreadsheetApp.openById('1glxhF229H3fuWPrpzExpPX1YPcXhGrY1-mBw8TfToMk');
+  var sheetDatosTKS = tkss.getSheetByName("TK 2022");
+  var datosTKS = sheetDatosTKS.getRange(3, 2, sheetDatosTKS.getLastRow(), sheetDatosTKS.getLastColumn()).getValues();
+  var membresiaTK = '';
+  var nuevo = false;
+
+  for(var i = 0;i<datosTKS.length; i++){
+    if(datosTKS[i][6] == correo){
+      if(datosTKS[i][3] == 'A' ){
+        switch (datosTKS[i][4]){
+          case 'BEN':
+            membresiaTK = 'TARJETA KADAMPA BENEFACTOR';
+          break;
+          case 'COR':
+            membresiaTK = 'TARJETA KADAMPA CORAZÓN';
+          break;
+          case 'CLA':
+            membresiaTK = 'TARJETA KADAMPA CLASES';
+          break;          
+          default:
+          break;
+        }
+      } else{
+          if(datosTKS[i][3] == 'NO' ){
+            var tkElegida = abrevioTK(eleccionTK);
+            sheetDatosTKS.getRange(i, 4).setValue("CH").setBackground("yellow");
+            sheetDatosTKS.getRange(i, 5).setValue(tkElegida);
+          }
+      }
+    } else{nuevo = true;}
+  }
+  if (nuevo) {
+    cargoNuevaTK(tkss, correo, nombre, apellido, tkElegida, ciudad, celular, eleccionBoletin);
+  }
+  return membresiaTK;
+}
+
+function cargoPrecios(){
+  var fpss = SpreadsheetApp.openById('1V8Jfz45qKV62zB3W1J0xMRu_MY6pTNC8TEG0KOjP6t8');
+  var sheetPreciosTKS = fpss.getSheetByName("PRECIOS ABONOS");
+  //var sheetPreciosTKS = fpss.getSheets()[2];
+  var preciosTKS = sheetPreciosTKS.getRange(2, 1, sheetPreciosTKS.getLastRow(), sheetPreciosTKS.getLastColumn()).getValues();
+  var datosPrecios = {
+      "TKClases1":0,
+      "TKClases1Boton":"",
+      "TKClases2": 0,
+      "TKClases2Boton":"",
+      "TKClases3": 0,
+      "TKClases3Boton":"",
+      "TKCorazon": 0,
+      "TKCorazonBoton":"",
+      "TKBenefactor": 0,
+      "TKBenefactorBoton":""
+}
+  for(var i = 0;i<preciosTKS.length; i++){
+    switch (preciosTKS[i][0]){
+          case 'TK Clases 1 Período':
+            datosPrecios.TKClases1 = preciosTKS[i][1];
+            datosPrecios.TKClases1Boton = preciosTKS[i][2];
+          break;
+          case 'Tk Clases 2 Periodo':
+            datosPrecios.TKClases2 = preciosTKS[i][1];
+            datosPrecios.TKClases2Boton = preciosTKS[i][2];
+          break;
+          case 'Tk Clases 3 Periodo':
+            datosPrecios.TKClases3 = preciosTKS[i][1];
+            datosPrecios.TKClases3Boton = preciosTKS[i][2];
+          break;   
+          case 'TK Corazón':
+            datosPrecios.TKCorazon = preciosTKS[i][1];
+            datosPrecios.TKCorazonBoton = preciosTKS[i][2];
+          break;   
+          case 'TK Benefactor':
+            datosPrecios.TKBenefactor = preciosTKS[i][1];
+            datosPrecios.TKBenefactorBoton = preciosTKS[i][2];
+          break;          
+          default:
+          break;
+        }
+  }
+  Logger.log(datosPrecios);
+  return datosPrecios;
+}
+
+function abrevioTK(eleccionTK){
+  var tkElegida = "";
+  switch (eleccionTK){
+      case 'TARJETA KADAMPA CLASES':
+        tkElegida = "CLA"
+      break;
+      case 'TARJETA KADAMPA CORAZÓN':
+        tkElegida = "COR"
+      break;
+      case 'TARJETA KADAMPA BENEFACTOR':
+        tkElegida = "BEN"
+      break;   
+      default:
+      break;
+    }
+  return tkElegida;
+}
+function abrevionewsletter(eleccionBoletin){
+  var boletin = "";
+  if (eleccionBoletin == "Si, quiero mantenerme informado"){
+    boletin = "SI";
+  } else{
+    boletin = "NO";
+  }
+  return boletin;
+}
+
+function cargoNuevaTK(tkss, correo, nombre, apellido, eleccionTK, celular, ciudad, eleccionBoletin){
+  var sheet = tkss.getSheetByName("TK 2022");
+  let tkElegida = abrevioTK(eleccionTK);
+  var boletin = abrevionewsletter(eleccionBoletin);
+
+  sheet.appendRow(["", nombre, apellido, "CH", tkElegida, "", celular, correo, ciudad, boletin]);
+  var activeRow = sheet.getLastRow();
+  sheet.getRange(activeRow, 4).setBackground('yellow');
+
+
+  //sheetDatosTKS.getRange(1, 1, sheetDatosTKS.getLastRow(), sheetDatosTKS.getLastColumn());
+  /*
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+var sheet = ss.getSheets()[0];
+// Appends a new row with 3 columns to the bottom of the current
+// data region in the sheet containing the values in the array.
+sheet.appendRow(["a man", "a plan", "panama"]);
+ */
+}
+  function cargoRespuestaForm(){
+
+  }
