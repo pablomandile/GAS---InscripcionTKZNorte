@@ -1,0 +1,144 @@
+//VARIABLES GLOBALES
+
+//****************************************************
+// Datos del evento. Cambiar datos del evento sólo aquí 
+var TituloEvento = "Clase especial: Psicología Budista";
+var ValorEvento = "$1600";
+var aPagar = "1600";
+var FechaEvento = "MIÉRCOLES 22 de MARZO";
+var HoraEvento = "19,30 a 21hs";
+var LugarEvento = "Alvear 465, MARTÍNEZ. Por favor, vení 20 minutos antes para registrarte";
+var Lugar = "ZONA NORTE";
+// Link todopago del evento
+var botonPagoDesc = "";
+var botonPago = "";
+
+//****************************************************
+
+// Asunto del email
+var subject = "CLASE ESPECIAL " + FechaEvento + " a las "  + HoraEvento + " CENTRO DE BUDISMO KADAMPA NAGARYHUNA. ";
+
+// Estilos
+var styleF28 = "<span style='margin-bottom:32px;font-family:Google Sans,Roboto,Arial,Helvetica,sans-serif;font-style:normal;font-size:28px;line-height:36px;color:#3c4043'>";
+var styleF28White = "<span style='margin-bottom:32px;font-family:Google Sans,Roboto,Arial,Helvetica,sans-serif;font-style:normal;font-size:28px;line-height:36px;color:#ffffff'>";
+  var styleF22White = "<span style='margin-bottom:32px;font-family:Google Sans,Roboto,Arial,Helvetica,sans-serif;font-style:normal;font-size:22px;line-height:36px;color:#ffffff'>";
+var styleF22 = "<span style='margin-bottom:32px;font-family:Google Sans,Roboto,Arial,Helvetica,sans-serif;font-style:normal;font-size:22px;line-height:36px;color:#3c4043'>";
+var styleF18 = "<span style='margin-bottom:32px;font-family:Google Sans,Roboto,Arial,Helvetica,sans-serif;font-style:normal;font-size:18px;line-height:36px;color:#3c4043'>";
+var styleF18Blue = "<span style='margin-bottom:32px;font-family:Google Sans,Roboto,Arial,Helvetica,sans-serif;font-style:normal;font-size:18px;line-height:36px;color:#4575ec'>";
+var styleF22Tab = "<span style='margin-left:32px;font-family:Google Sans,Roboto,Arial,Helvetica,sans-serif;font-style:normal;font-size:22px;line-height:36px;color:#3c4043'>";
+var styleF22Morado = "<span style='margin-bottom:32px;font-family:Google Sans,Roboto,Arial,Helvetica,sans-serif;font-style:normal;font-size:22px;line-height:36px;color:#a66cf5'>";
+var finStyle = "</span>";
+
+var TextoInicial = styleF18 + "<br/><br/>Muchas gracias por tu pre-inscripción." +
+      "<br/>Tu inscripción quedará confirmada con el pago, una vez realizado, por favor, envianos el comprobante a este mail.<br>" + finStyle;
+var textoAuxiliar = styleF22 + "" + finStyle;
+
+// Armado de información del evento
+var DatosEvento = styleF18 + "<br><strong>DETALLES DEL EVENTO: </strong>" + "<br/>Nombre del evento: " + 
+  "<strong>" + TituloEvento + "</strong>" + "<br>Fecha y hora: " + "<strong>" + FechaEvento + " " + HoraEvento + "</strong>" + 
+    "<br>Lugar: <strong>" + LugarEvento +"</strong>" + finStyle;
+
+var Consultas = styleF22Morado + "<br/><br/> *Por cualquier duda también podés escribirnos a meditarenzonanorte@gmail.com<br/><br/>" + finStyle;
+
+// Datos de Pié del Email
+var Saludo = styleF28White + "¡Muchas gracias, esperamos que lo disfrutes!" +
+  styleF22White + "<br><strong>Centro de Budismo Kadampa Nagaryhuna.</strong>" + finStyle +
+  "<br>meditarenzonanorte.org" + finStyle;
+
+// Datos de Pago
+var LineaPago1 = styleF22 +"<br><strong>El valor del evento: " + ValorEvento + "</strong>" + finStyle;
+// var LineaPago2 = "<br/><a href='"+ botonPago +"'><img src='http://meditarenzonanorte.org/wp-content/uploads/2019/02/Sin-título-1.png' height='50' width='150'></a>"
+var LineaPago2 = styleF18 + "<br><strong>AQUÍ TE COMPARTIMOS LOS DATOS BANCARIOS: </strong><br>" +
+  "🔹 Centro de Med.kadampa Arg. - BBVA Banco Frances <br>🔹 CUIT 30-71440026-2<br>" + 
+  "🔹 CBU: 0170134620000000330336<br>🔹 ALIAS: MENTE.KARMA.VACUIDAD <br>" +
+  "🔸 TENÉ EN CUENTA QUE LOS PAGOS PUEDEN TARDAR EN PROCESARSE HASTA 48 HS.<br>Una vez procesado, recibirás un mail con todos los detalles." + finStyle + 
+  styleF22Morado + "<br><br><strong>IMPORTANTE: Por favor, una vez realizada tu transferencia envianos el comprobante a este mail, " +  "al mail: <a href='cbkn.adm@gmail.com'>Cbkn.adm@gmail.com</a> o compartilo al número de Whatsapp: +5491166633921." + " ¡DE LO CONTRARIO NO SERÁ REGISTRADO TU PAGO!</strong>" + finStyle + 
+  "<br><br>Si te gustaría abonar en <strong>EFECTIVO </strong>, podés acercercarte directo a cualquiera de nuestras clases.<br>" +
+  "Por cualquier consulta o dificultad, también podés escribinos por WhatsApp al 11 6663-3921 o por las redes y te ayudamos a resolverlo.<br>" +
+  finStyle;
+var ColorPago = "Red";
+
+
+// emailBody is for those devices that can't render HTML, is plain text
+var emailBody = "¡Hola! " +
+  "\nGracias por tu inscripción al Curso " + TituloEvento + 
+    "\nen fecha " +
+      "\nPróximamente recibirás un email con más detalles sobre éste evento y tu información de pago." +
+        "\nMuchas Gracias";
+
+// Evento que se dispara al enviar el formulario y toma los datos de la planilla
+function emailOnFormSubmit(e) {
+  
+  // Toma los datos de la planilla de cálculo del evento
+  var name = e.values[1];
+  var lname = e.values[2];
+  var mail = e.values[3];
+  var tkabono = e.values[8];
+
+  // Para usar la hoja de cálculo del evento
+  const CORREOENVIADO = "CORREO ENVIADO";
+  var ActiveSheet = SpreadsheetApp.getActiveSheet();
+  var ActiveRow = ActiveSheet.getLastRow();
+  switch (tkabono)  {
+    case "Sí, tarjeta Kadampa CLASES":
+    break;
+    case "Sí, tarjeta Kadampa CORAZÓN":
+      aPagar = "1200";
+      ValorEvento = "$1200";
+      LineaPago1 = styleF22 +"<br><strong>El valor del evento: " + ValorEvento + "</strong>" + finStyle;
+    break;
+    case "Sí, tarjeta Kadampa BENEFACTOR":
+      aPagar = "800";
+      ValorEvento = "$800";
+      LineaPago1 = styleF22 +"<br><strong>El valor del evento: " + ValorEvento + "</strong>" + finStyle;
+    break;
+    case "Sí, tarjeta Kadampa BENEFACTOR Plus":
+      Gratis();
+    break; 
+    case "No tengo tarjeta Kadampa":
+    break; 
+    default:
+    break;
+  }  
+
+  function Gratis(){
+        aPagar = "0";
+        LineaPago1 ="";
+        LineaPago2 ="";
+        TextoInicial = styleF18 + "<br/>Muchas gracias por tu inscripción. Tu lugar quedó confirmado, ¡te esperamos! <br/>." + finStyle;
+  };
+  
+    var encabezadoMail = "<table width='720' border='0' align='center' bgcolor='white' cellpadding='0' cellspacing='0'>"+
+        "<tr bgcolor='#2784d6'><td><img src='https://meditarenargentina.org/wp-content/uploads/2022/11/unnamed.png' alt='Social Media' width='720' usemap='#m_-6367196319079066917_Redes' title='CMKA Social' border='0' style='display:block'>"+
+            "<map name='m_-6367196319079066917_Redes' id='m_-6367196319079066917Redes'>"+
+            "<area shape='rect' coords='01,01,90,70'  href='https://www.facebook.com/meditarenzonanorte' alt='Facebook CMKA' target='_blank'>"+
+            "<area shape='rect' coords='92,01,188,70' href='https://www.instagram.com/meditarenzonanorte' alt='Instagram CMKA' target='_blank'>"+
+            "<area shape='rect' coords='190,01,303,70' href='https://www.youtube.com/channel/UC8Bmrclk97g2onCsWRwZCyw' alt='Youtube CMKA' target='_blank'>"+
+            "<area shape='rect' coords='306,01,410,70' href='https://open.spotify.com/artist/0SKgzlnrfGPaeQfUUgDhb7/discography/album' alt='Spotify' target='_blank'>"+
+            "<area shape='rect' coords='412,01,512,70' href='https://api.whatsapp.com/send?phone=541166633921' alt='Whatsapp' target='_blank'>"+
+            "<area shape='rect' coords='515,01,616,70' href='https://twitter.com/meditarenarg' alt='Twitter CMKA' target='_blank'>"+
+            "<area shape='rect' coords='618,01,720,70' href='https://meditarenzonanorte.org/' alt='web Centro de meditación KadampaArgentina' target='_blank'>"+
+            "</map></td></tr><tr bgcolor='#fff'><td><img src='https://meditarenargentina.org/wp-content/uploads/2022/11/unnamed.jpg' width='720' style='display:block' alt='Banner Header'>"+
+            "</td></tr><tr><td valign='middle' style='margin-bottom:32px;font-family:Google Sans,Roboto,Arial,Helvetica,sans-serif;font-style:normal;font-size:28px;line-height:36px;color:#3c4043'>";
+  var inicioPieMail = "</td></tr><tr height='80px' bgcolor='#B88477'><td align='center' valign='middle' style='padding:15px 2px 2px 15px;'>" +    
+    Saludo + "</td></tr>";
+
+  var htmlBody =  encabezadoMail + 
+  styleF28 + "<br>¡Hola " + "<strong>" + name + " " + lname + "</strong>!" + finStyle +
+    TextoInicial + LineaPago1 + LineaPago2 + styleF22 + 
+    "<br/><br/><strong>INFORMACIÓN IMPORTANTE: </strong>" + finStyle +
+    DatosEvento + textoAuxiliar + Consultas + inicioPieMail;
+
+  var advancedOpts = { name: "Inscripciones - CMKA", htmlBody: htmlBody};
+  
+  // This instruction sends the email 
+  MailApp.sendEmail(mail, subject, emailBody, advancedOpts);
+  
+  // Actualiza los campos en la planilla de cálculo del evento
+  ActiveSheet.getRange(ActiveRow, 11).setValue(CORREOENVIADO);
+  ActiveSheet.getRange(ActiveRow, 10).setValue("$" + aPagar);
+  ActiveSheet.getRange(ActiveRow, 1).setBackground('#b3d1ff');
+  ActiveSheet.getRange(ActiveRow, 11).setBackground('green');
+  ActiveSheet.getRange(ActiveRow, 11).setFontColor('white');
+  SpreadsheetApp.flush();
+}
