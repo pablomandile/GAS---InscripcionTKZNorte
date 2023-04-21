@@ -1,0 +1,54 @@
+/*************************************************************
+*** PRIMER PROCESO QUE SE EJECUTA AL ABRIR LA PLANILLA     ***
+*** VINCULADA CON EL EVENTO PARA SU FORMATEO               ***
+*** Y AGREGAR UN CUSTOM MENU                               ***
+*************************************************************/
+function formateoPlanilla(){
+  // Add a custom menu to the spreadsheet.
+  SpreadsheetApp.getUi() // Or DocumentApp, SlidesApp, or FormApp.
+      .createMenu('Nagaryhuna')
+      .addItem('Recordatorio de pago', 'BiblioScriptZN.recordatorioPago')
+      .addItem('Envío de confirmaciones', 'BiblioScriptZN.envioLinksAConfirmados')
+      .addItem('Consultar mails restantes', 'BiblioScriptZN.verificoCuotaMailsmsg')
+      .addToUi();
+
+  let ActiveSheet = SpreadsheetApp.getActiveSheet();
+  let ActiveCol = ActiveSheet.getLastColumn();
+  let sheet = ActiveSheet.getDataRange().getValues();
+  let colTemporal = "";
+  let colorCelda = '#CFE2F3';
+  let colorAlerta = '#faa16e';
+  
+ // LA PLANILLA YA TIENE FORMATO? EXISTE LA COLUMNA ASISTENCIA?
+  colTemporal = sheet[0].indexOf('Asistencia')+1;  
+
+  // SI NO FORMATEO LA PLANILLA Y AGREGO COLUMNAS
+  if (colTemporal == 0){
+    let columColorAlerta = [ActiveCol+5, ActiveCol];
+    let columnas = ['Pendiente', 'Respuesta', 'Envio Info TKS', 'Membresía', 'Pago', 'Recordatorio pago', 'Confirmación', 'NombreEvento', 'FechaPago', 'Valor', 'Forma', 'Asistencia'];
+    for(let i = 0; i < columnas.length; i++){
+      ActiveSheet.insertColumnAfter(ActiveCol);
+      if (columnas[i] == 'Pago' || columnas[i] == 'Pendiente'){
+        ActiveSheet.getRange(1, ActiveCol+1).setValue(columnas[i]).setBackground(colorAlerta);
+      } else{
+        ActiveSheet.getRange(1, ActiveCol+1).setValue(columnas[i]).setBackground(colorCelda);
+      }
+      ActiveCol = ActiveSheet.getLastColumn();
+    }
+    tamanioCeldas();
+    SpreadsheetApp.flush();
+  Browser.msgBox('SE FORMATEO LA PLANILLA CORRECTAMENTE', 'Se agregaron las columnas necesarias para el proceso de respuestas.', 
+    Browser.Buttons.OK); 
+    }
+  
+  function tamanioCeldas(){
+    let MaxCols = ActiveSheet.getMaxColumns();
+    for (let i = 0; i < MaxCols; i++){
+      ActiveSheet.autoResizeColumn(i+1);
+      if (i == columColorAlerta[0] || i == columColorAlerta[1]){
+      }else{
+        ActiveSheet.getRange(1, i+1).setBackground(colorCelda);
+      }
+    }
+  }
+}
