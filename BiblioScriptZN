@@ -35,13 +35,13 @@ function formateoPlanilla(){
       }
       ActiveCol = ActiveSheet.getLastColumn();
     }
-    tamanioCeldas();
+    tamanioCeldas(columColorAlerta);
     SpreadsheetApp.flush();
   Browser.msgBox('SE FORMATEO LA PLANILLA CORRECTAMENTE', 'Se agregaron las columnas necesarias para el proceso de respuestas.', 
     Browser.Buttons.OK); 
     }
   
-  function tamanioCeldas(){
+  function tamanioCeldas(columColorAlerta){
     let MaxCols = ActiveSheet.getMaxColumns();
     for (let i = 0; i < MaxCols; i++){
       ActiveSheet.autoResizeColumn(i+1);
@@ -50,5 +50,370 @@ function formateoPlanilla(){
         ActiveSheet.getRange(1, i+1).setBackground(colorCelda);
       }
     }
+  }
+}
+/*************************************************************
+*** PRIMER PROCESO QUE SE EJECUTA AL ABRIR LA PLANILLA     ***
+*** VINCULADA CON EL EVENTO PARA SU FORMATEO               ***
+*** Y AGREGAR UN CUSTOM MENU                               ***
+*************************************************************/
+
+/*************************************************************
+*** FUNCIÓN PRINCIPAL DE PRECESO DE LOS DATOS ENVIADOS     ***
+*** DESDE EL FORMULARIO DE REGISTRO                        ***
+*** CALCÚLA QUE PREGUTAS VIENEN EN EL FORMULARIO           ***
+*** TOMA TODOS LOS DATOS QUE CONTESTO EL CLIENTE DE LA     ***
+*** PLANILLA DE RESPUESTAS                                 ***
+*** CALCULA SI ES 2X1 Y TODOS LOS DESCUENTOS SEGÚN TK      ***
+*** LLAMA A TODAS LAS DEMÁS FUNCIONES                      ***
+*** ESCRIBE EL ESTADO EN LA PLANILLA, PENDIENTE Y ENVIOS   ***
+*************************************************************/
+function procesoRespuestas(e, tituloEvento){
+  let ActiveSheet = SpreadsheetApp.getActiveSheet();
+  let ActiveRow = ActiveSheet.getLastRow();
+  let sheet = ActiveSheet.getDataRange().getValues();
+  let preguntas = datosPlanillaInfoCursosZN('Preguntas form', tituloEvento);
+  let evento = datosPlanillaInfoCursosZN('Cursos', tituloEvento);
+  let mail = datosPlanillaInfoCursosZN('Info mail', tituloEvento);
+  let inscripcion = {};
+  evento.titulo = tituloEvento;
+  procesoEvento(evento, preguntas, sheet, inscripcion, ActiveSheet, ActiveRow);
+  if (inscripcion.infoTK == 'Sí, tengo tarjeta Kadampa' ){
+    checkMembresia(inscripcion);
+    inscripcion.descuento = textDesc(inscripcion);
+  }
+  determinoValor(inscripcion, evento, mail);  
+  actualizoPlanilla(ActiveSheet, ActiveRow, sheet, inscripcion);
+  envioMail(mail, inscripcion, evento);
+}
+
+
+/*************************************************************
+*** FUNCIÓN PRINCIPAL DE PRECESO DE LOS DATOS ENVIADOS     ***
+*** DESDE EL FORMULARIO DE REGISTRO                        ***
+*** CALCÚLA QUE PREGUTAS VIENEN EN EL FORMULARIO           ***
+*** TOMA TODOS LOS DATOS QUE CONTESTO EL CLIENTE DE LA     ***
+*** PLANILLA DE RESPUESTAS                                 ***
+*** CALCULA SI ES 2X1 Y TODOS LOS DESCUENTOS SEGÚN TK      ***
+*** LLAMA A TODAS LAS DEMÁS FUNCIONES                      ***
+*** ESCRIBE EL ESTADO EN LA PLANILLA, PENDIENTE Y ENVIOS   ***
+*************************************************************/
+function procesoEvento(evento, preguntas, sheet, inscripcion, ActiveSheet, ActiveRow){
+  switch (evento.Tipo) {
+    case 'Curso':
+      buscoPreguntas(preguntas, sheet, inscripcion, ActiveSheet, ActiveRow);
+    break;
+    case 'Clase':
+      buscoPreguntas(preguntas, sheet, inscripcion, ActiveSheet, ActiveRow);
+    break;
+    case 'Retiro':
+      buscoPreguntas(preguntas, sheet, inscripcion, ActiveSheet, ActiveRow);
+    break;
+    case 'Oraciones por la Paz Mundial':
+      buscoPreguntas(preguntas, sheet,inscripcion, ActiveSheet, ActiveRow);
+    break;
+    case 'Puya':
+      buscoPreguntas(preguntas, sheet, inscripcion, ActiveSheet, ActiveRow);
+    break;
+    case 'Preceptos':
+      buscoPreguntas(preguntas, sheet,inscripcion, ActiveSheet, ActiveRow);
+    break;
+    default:
+    break;
+  }
+}
+
+function buscoPreguntas(preguntas, sheet, inscripcion, ActiveSheet, ActiveRow){
+  Logger.log(JSON.stringify(preguntas));
+  inscripcion.nombre = (buscoColumna(preguntas.nombre,sheet) != 0) ? valorPlanilla(preguntas.nombre) : "--";
+  inscripcion.apellido = (buscoColumna(preguntas.apellido,sheet) != 0) ? valorPlanilla(preguntas.apellido) : "--";
+  inscripcion.mail = (buscoColumna(preguntas.email,sheet) != 0) ? valorPlanilla(preguntas.email) : "";
+  if(inscripcion.mail == ''){
+    inscripcion.mail = (buscoColumna(preguntas.emailtk,sheet) != 0) ? valorPlanilla(preguntas.emailtk) : "";
+  }
+  inscripcion.infoTK = (buscoColumna(preguntas.infoTK,sheet) != 0) ? valorPlanilla(preguntas.infoTK) : "";
+  inscripcion.pais = (buscoColumna(preguntas.pais,sheet) != 0) ? valorPlanilla(preguntas.pais) : "Argentina";
+  
+  // let grabaciones = (buscoColumna(Preguntas.grabaciones,sheet) != 0) ? valorPlanilla(Preguntas.grabaciones) : "";
+  function valorPlanilla(valCampo){
+    return ActiveSheet.getRange(ActiveRow, buscoColumna(valCampo,sheet)).getValue();;
+  }
+}
+
+function determinoValor(inscripcion, evento, mail){
+  Logger.log(inscripcion.infoTK);
+  Logger.log(JSON.stringify(inscripcion));
+  Logger.log(JSON.stringify(evento));
+  switch (inscripcion.membresiaTK)  {
+    case "TK CLASES":
+      inscripcion.aPagar = evento.ValorTKClases;
+      chequeoImporte(inscripcion, mail, evento)
+    break;
+    case "TK CORAZÓN":
+      inscripcion.aPagar = evento.ValorTKCorazon;
+      chequeoImporte(inscripcion, mail, evento);
+    break;
+    case "TK BENEFACTOR":
+      inscripcion.aPagar = evento.ValorTKBenefactor;
+      chequeoImporte(inscripcion, mail, evento);
+    break;
+    case "TK BENEFACTOR PLUS":
+      inscripcion.aPagar = evento.ValorTKBenefactorPlus;
+      chequeoImporte(inscripcion, mail, evento);
+    break;
+    case "SIN MEMBRESIA":
+      inscripcion.aPagar = evento.ValorGeneral;
+      inscripcion.descuento = '';
+    break; 
+    default:
+      Logger.log('no pasa por ninguna opción tk');
+    break;
+  }  
+  Logger.log(inscripcion.aPagar);
+}
+
+function chequeoImporte(inscripcion, mail, evento){
+  if (inscripcion.aPagar != 0){
+    inscripcion.textoInicial = mail.textoInicial;
+    inscripcion.detallePago = '<br>Valor del evento: $' + evento.ValorGeneral + '<br>Importe a pagar: $' + inscripcion.aPagar;
+  }else {
+    inscripcion.textoInicial = mail.textoInicialConfirmado;
+  }
+}
+
+function textDesc(inscripcion){
+  let desc = inscripcion.membresiaTK;
+  return "<br>Se aplicó descuento de tarjeta Kadampa " + desc.replace('TK ', '');
+}
+/*************************************************************
+*** TRAIGO LA INFO DE LAS PLANILLAS CURSOS, INFO MAIL Y    ***
+*** PREGUNTAS DE FORMS Y DEVUELVO OBJETOS CON LOS DATOS    ***
+*************************************************************/
+function datosPlanillaInfoCursosZN(hoja, tituloEvento){
+  let ss = SpreadsheetApp.openById("1RfLwLB2yF04uF6FtQ0AUp21TQJViE9bqundAXL7Zi_4");
+  let sheetDatos = ss.getSheetByName(hoja);
+  let datos = sheetDatos.getDataRange().getValues();
+  let inf = {};
+  switch (hoja) {
+    case 'Preguntas form':
+      inf = procesoHojaPreguntas(datos); 
+    break;
+    case 'Cursos':
+      inf = procesoHojaCursos(datos,tituloEvento);
+    break;
+    case 'Info mail':
+      inf = procesoHojaMail(datos);
+    break;
+    default:
+    break;
+  }
+
+  function procesoHojaPreguntas(datos){
+    let infPreg ={};
+    for (var i = 1; i < datos.length; i++) {
+      infPreg[datos[i][0]] = datos[i][1];      
+    }
+    // Logger.log('armo obj preg' + JSON.stringify(infPreg));
+    return infPreg;
+  }
+
+  function procesoHojaCursos(datos, tituloEvento){
+    let columnas = traigoEncabezados(datos);
+    let infCursos = {};
+    for (var i = 0; i < datos.length; i++) {
+      if(datos[i][0] == tituloEvento){
+        columnas.forEach(function(columna){
+          infCursos[columna] = vsheet(i+1,columna)
+        });
+      }
+    }
+    return infCursos;
+  }
+  function procesoHojaMail(datos){
+    let columnas = traigoEncabezados(datos);
+    let infMail = {};
+    for (var i = 0; i < datos.length; i++) {
+      columnas.forEach(function(columna){
+      infMail[columna] = vsheet(i+1,columna)
+      });
+    }
+    return infMail;
+  }
+  function vsheet(i, campo){
+    return sheetDatos.getRange(i, buscoColumna(campo, datos)).getValue();
+  }
+  function traigoEncabezados(datos){
+    let encabezados = datos[0];
+    return encabezados;
+  }
+  return inf;
+}
+/*************************************************************
+*** TRAIGO LA INFO DE LAS PLANILLAS CURSOS, INFO MAIL Y    ***
+*** PREGUNTAS DE FORMS Y DEVUELVO OBJETOS CON LOS DATOS    ***
+*************************************************************/
+
+/*************************************************************
+*** AHORRA CÓDIGO EN CADA FUNCIÓN DÓNDE TRAE DATOS DE      ***
+*** LA PLANILLA INFORMACIÓN DE CURSOS                      ***
+*************************************************************/
+function buscoColumna(campo, datos){
+  let columna = datos[0].indexOf(campo)+1;
+  return columna;
+}
+
+/**************************************************************
+*** ARMO UN OBJETO CON ESTILOS PARA USAR EN EL HTML         ***
+*** DEL CUERPO DE LOS EMAILS                                ***
+**************************************************************/
+function estilos(){
+  var estilos = {
+        styleF28: "<span style='margin-bottom:32px;font-family:Google Sans,Roboto,Arial,Helvetica,sans-serif;font-style:normal;font-size:28px;line-height:36px;color:#3c4043'>",
+        styleF28White: "<span style='margin-bottom:32px;font-family:Google Sans,Roboto,Arial,Helvetica,sans-serif;font-style:normal;font-size:28px;line-height:36px;color:#ffffff'>",
+        styleF22: "<span style='margin-bottom:32px;font-family:Google Sans,Roboto,Arial,Helvetica,sans-serif;font-style:normal;font-size:22px;line-height:36px;color:#3c4043'>",
+        styleF18: "<span style='margin-bottom:32px;font-family:Google Sans,Roboto,Arial,Helvetica,sans-serif;font-style:normal;font-size:18px;line-height:36px;color:#3c4043'>",
+        styleF18Blue: "<span style='margin-bottom:32px;font-family:Google Sans,Roboto,Arial,Helvetica,sans-serif;font-style:normal;font-size:18px;line-height:36px;color:#4575ec'>",
+        styleF22Tab: "<span style='margin-left:32px;font-family:Google Sans,Roboto,Arial,Helvetica,sans-serif;font-style:normal;font-size:22px;line-height:36px;color:#3c4043'>",
+        styleF22Morado: "<span style='margin-bottom:32px;font-family:Google Sans,Roboto,Arial,Helvetica,sans-serif;font-style:normal;font-size:22px;line-height:36px;color:#a66cf5'>",
+        finStyle: "</span>",
+  }
+  return estilos;
+}
+/**************************************************************
+*** ARMO UN OBJETO CON ESTILOS PARA USAR EN EL HTML         ***
+*** DEL CUERPO DE LOS EMAILS                                ***
+**************************************************************/
+/**************************************************************
+*** CHEQUEA E INFORMA LA CANTIDAD DE ENVÍOS                 ***
+*** RESTANTES PARA EL DÍA DE LA FECHA                       ***
+**************************************************************/
+  function verificoCuotaMailsmsg(){
+  var emailQuotaRemaining = MailApp.getRemainingDailyQuota();
+  var date = new Date();
+  var fechaActual = (date.toLocaleString('es-AR', {
+    //weekday: 'short', // long, short, narrow
+    day: 'numeric', // numeric, 2-digit
+    //year: 'numeric', // numeric, 2-digit
+    month: 'long', // numeric, 2-digit, long, short, narrow
+    hour: 'numeric', // numeric, 2-digit
+    minute: 'numeric', // numeric, 2-digit
+    second: 'numeric', // numeric, 2-digit
+  }));
+  try {
+    Browser.msgBox('CUOTA DE MAILS RESTANTE', 'Restan: ' + emailQuotaRemaining + ' envíos para hoy ' + fechaActual, Browser.Buttons.OK); 
+  } catch (error) { 
+    Logger.log('CUOTA DE MAILS RESTANTE: ' + emailQuotaRemaining + ' envíos para hoy ' + fechaActual);
+  }
+}
+/**************************************************************
+*** CHEQUEA E INFORMA LA CANTIDAD DE ENVÍOS                 ***
+*** RESTANTES PARA EL DÍA DE LA FECHA                       ***
+**************************************************************/
+/**************************************************************
+*** FORMATEO EN HTML LOS TEXTOS DE LA PLANILLA INFO MAIL    ***
+*** PARA USARLOS EN LA RESPUESTA DE MAIL                    ***
+**************************************************************/
+function formatoTexto(text){
+  let formattedText = text.replace(/\n/g, "<br>");
+  return formattedText;
+}
+/**************************************************************
+*** FORMATEO EN HTML LOS TEXTOS DE LA PLANILLA INFO MAIL    ***
+*** PARA USARLOS EN LA RESPUESTA DE MAIL                    ***
+**************************************************************/
+
+
+function encabezadoyPieMail(mail){
+  let e = estilos();
+  let partesMail = {
+      encabezadoMail: "<table width='720' border='0' align='center' bgcolor='white' cellpadding='0' cellspacing='0'>"+
+        "<tr bgcolor='#2784d6'><td><img src='https://meditarenargentina.org/wp-content/uploads/2022/11/unnamed.png' alt='Social Media' width='720' usemap='#m_-6367196319079066917_Redes' title='CMKA Social' border='0' style='display:block'>"+
+            "<map name='m_-6367196319079066917_Redes' id='m_-6367196319079066917Redes'>"+
+            "<area shape='rect' coords='01,01,90,70'  href='https://www.facebook.com/meditarenzonanorte' alt='Facebook CMKA' target='_blank'>"+
+            "<area shape='rect' coords='92,01,188,70' href='https://www.instagram.com/meditarenzonanorte' alt='Instagram CMKA' target='_blank'>"+
+            "<area shape='rect' coords='190,01,303,70' href='https://www.youtube.com/channel/UC8Bmrclk97g2onCsWRwZCyw' alt='Youtube CMKA' target='_blank'>"+
+            "<area shape='rect' coords='306,01,410,70' href='https://open.spotify.com/artist/0SKgzlnrfGPaeQfUUgDhb7/discography/album' alt='Spotify' target='_blank'>"+
+            "<area shape='rect' coords='412,01,512,70' href='https://api.whatsapp.com/send?phone=541166633921' alt='Whatsapp' target='_blank'>"+
+            "<area shape='rect' coords='515,01,616,70' href='https://twitter.com/meditarenarg' alt='Twitter CMKA' target='_blank'>"+
+            "<area shape='rect' coords='618,01,720,70' href='https://meditarenzonanorte.org/' alt='web Centro de meditación KadampaArgentina' target='_blank'>"+
+            "</map></td></tr><tr bgcolor='#fff'><td><img src='https://meditarenargentina.org/wp-content/uploads/2022/11/unnamed.jpg' width='720' style='display:block' alt='Banner Header'>"+
+            "</td></tr><tr><td valign='middle' style='margin-bottom:32px;font-family:Google Sans,Roboto,Arial,Helvetica,sans-serif;font-style:normal;font-size:28px;line-height:36px;color:#3c4043'>",
+      pieMail: "</td></tr><tr height='80px' bgcolor='#B88477'><td align='center' valign='middle' style='padding:15px 2px 2px 15px;'>" +    
+    e.styleF28White + mail.saludo + e.finStyle + "</td></tr>"
+  }
+  return partesMail;
+}
+
+function actualizoPlanilla(ActiveSheet, ActiveRow, sheet, inscripcion){
+  Logger.log(inscripcion.aPagar);
+  ActiveSheet.getRange(ActiveRow, buscoColumna('Pendiente',sheet)).setValue(inscripcion.aPagar).setHorizontalAlignment('right');
+  ActiveSheet.getRange(ActiveRow, buscoColumna('Respuesta',sheet)).setValue('ENVIADA').setBackground('#67ad63').setFontColor('white');
+  ActiveSheet.getRange(ActiveRow, 1).setBackground('#b3d1ff');
+  SpreadsheetApp.flush();
+}
+
+function envioMail(mail, inscripcion, evento){
+  let e = estilos();
+  let subject = evento.Tipo + ' ' + evento.Fecha + ' ' + evento.Nombre;
+  let partesMail = encabezadoyPieMail(mail);
+  let detalle = e.styleF22 + "<br><br/><strong>DETALLES DEL EVENTO: </strong><br/>" + e.finStyle +
+      e.styleF18Blue + "Nombre: <strong>" + evento.Nombre + "</strong>" + e.finStyle +
+      e.styleF18 + "<br/>Fecha y hora: " + evento.Fecha + " " + evento.Hora + e.finStyle +
+      // styleF18 + "<br/>Disponible por: " + datosEvento.Disponibilidad + finStyle +
+      e.styleF18 + "<br/>Lugar: " + e.finStyle + e.styleF18Blue + "<strong>" + evento.Lugar + "</strong>" + e.finStyle;
+  let htmlBody =  partesMail.encabezadoMail + 
+  e.styleF28 + "<br>¡Hola " + "<strong>" + inscripcion.nombre + " " + inscripcion.apellido + "</strong>!" + e.finStyle +
+  e.styleF22 + inscripcion.textoInicial + inscripcion.detallePago + inscripcion.descuento + mail.pagoTransfer + detalle + mail.dudas + e.finStyle + partesMail.pieMail;
+  let advancedOpts = { name: "Inscripciones - Nagaryhuna", htmlBody: htmlBody};
+  let emailBody = "¡Hola! " + "\nGracias por tu inscripción al Curso " + evento.Nombre + "\nen fecha " +
+          "\nPróximamente recibirás un email con más detalles sobre éste evento y tu información de pago." + "\nMuchas Gracias";
+  // This instruction sends the email 
+  MailApp.sendEmail(inscripcion.mail, subject, emailBody, advancedOpts);
+}
+
+/**************************************************************
+*** CHEQUEA EN BASE A LA ELECCIÓN DE MEMBRESÍA DE USUARIO   ***
+*** SI ESTÁ ACTIVA CONSULTANDO PLANILLA TKS PAGOS POR AÑO   ***
+**************************************************************/
+function checkMembresia(inscripcion){
+  let ss2 = SpreadsheetApp.openById('1glxhF229H3fuWPrpzExpPX1YPcXhGrY1-mBw8TfToMk');
+  let sheetDatosTKZN = ss2.getSheetByName('TK 2023');
+  let datosTKZN = sheetDatosTKZN.getRange(3, 1, sheetDatosTKZN.getLastRow(), 9).getValues();
+
+  buscoPlanillaZN();
+
+    function buscoPlanillaZN(){
+      for(let i = 0;i<datosTKZN.length; i++){
+        correoPlanilla = datosTKZN[i][7].toString();
+        correoPlanilla = correoPlanilla.trim().toLowerCase();
+        if(correoPlanilla == inscripcion.mail){
+          inscripcion.nombre = datosTKZN[i][1];
+          inscripcion.apellido = datosTKZN[i][2];
+          if(datosTKZN[i][3] == 'A' ){
+            switch (datosTKZN[i][4]){
+              case 'CLA':
+                    inscripcion.membresiaTK = 'TK CLASES';
+              break;
+              case 'COR':
+                    inscripcion.membresiaTK = 'TK CORAZÓN';
+              break;
+              case 'BEN':
+                    inscripcion.membresiaTK = 'TK BENEFACTOR';
+              break;
+              case 'BENP':
+                    inscripcion.membresiaTK = 'TK BENEFACTOR PLUS';
+              break;
+              default:
+                inscripcion.membresiaTK = 'SIN MEMBRESIA';
+              break;
+            }
+          } else {
+            inscripcion.membresiaTK = 'SIN MEMBRESIA';
+          }
+        } 
+      }
+      if (inscripcion.membresiaTK == ''){
+        inscripcion.membresiaTK = 'SIN MEMBRESIA';
+      }
   }
 }
