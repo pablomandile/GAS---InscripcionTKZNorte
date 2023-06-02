@@ -18,7 +18,7 @@ function formateoPlanilla(){
   let colorCelda = '#CFE2F3';
   let colorAlerta = '#faa16e';
   
- // LA PLANILLA YA TIENE FORMATO? EXISTE LA COLUMNA ASISTENCIA?
+  // LA PLANILLA YA TIENE FORMATO? EXISTE LA COLUMNA ASISTENCIA?
   colTemporal = sheet[0].indexOf('Asistencia')+1;  
 
   // SI NO FORMATEO LA PLANILLA Y AGREGO COLUMNAS
@@ -36,9 +36,9 @@ function formateoPlanilla(){
     }
     tamanioCeldas(columColorAlerta);
     SpreadsheetApp.flush();
-  Browser.msgBox('SE FORMATEO LA PLANILLA CORRECTAMENTE', 'Se agregaron las columnas necesarias para el proceso de respuestas.', 
+    Browser.msgBox('SE FORMATEO LA PLANILLA CORRECTAMENTE', 'Se agregaron las columnas necesarias para el proceso de respuestas.', 
     Browser.Buttons.OK); 
-    }
+  }
   
   function tamanioCeldas(columColorAlerta){
     let MaxCols = ActiveSheet.getMaxColumns();
@@ -70,53 +70,79 @@ function procesoRespuestas(e, tituloEvento){
   let evento = datosPlanillaInfoCursosZN('Cursos', tituloEvento);
   let mail = datosPlanillaInfoCursosZN('Info mail', tituloEvento);
   let inscripcion = {};
-  inscripcion.textoError = '';
   evento.titulo = tituloEvento;
-  procesoEvento(evento, preguntas, sheet, inscripcion, ActiveSheet, ActiveRow);
+  inscripcion.textoError = '';
+  inscripcion.xdia = '';
+  inscripcion.descuento = '';
+  inscripcion.asistencia = '';
+  buscoPreguntas(preguntas, sheet, inscripcion, ActiveSheet, ActiveRow, evento);
+  procesoEvento(evento, inscripcion);
 
   if (inscripcion.infoTK == 'Sí, tengo tarjeta Kadampa' ){
     checkMembresia(inscripcion, mail);
-    Logger.log('memb1 ' + inscripcion.membresiaTK)
     if(inscripcion.membresiaTK == 'SIN MEMBRESIA'){
-    inscripcion.descuento = '';
-    Logger.log('pasa por sin mem');
+      inscripcion.descuento = '';
     } else {
-    Logger.log('else sin mem');
-    inscripcion.descuento = textDesc(inscripcion);
+      inscripcion.descuento = 'si';
     } 
-  }else{
+  } else{
     inscripcion.membresiaTK = 'SIN MEMBRESIA';
     inscripcion.descuento = '';
     inscripcion.textoError = '';
+    inscripcion.nuevo = true;
   }
   determinoValor(inscripcion, evento, mail);
   actualizoPlanilla(ActiveSheet, ActiveRow, sheet, inscripcion, evento);
   envioMail(mail, inscripcion, evento);
+  nuevoParticipante(inscripcion);
 }
 
 /*************************************************************
 *** CONSULTA DIFERENTES DATOS EN LA PLANILLA DEL           ***
 *** FORMULARIO SEGÚN EL TIPO DE EVENTO                     ***
 *************************************************************/
-function procesoEvento(evento, preguntas, sheet, inscripcion, ActiveSheet, ActiveRow){
+function procesoEvento(evento, inscripcion){
   switch (evento.Tipo) {
     case 'Curso':
-      buscoPreguntas(preguntas, sheet, inscripcion, ActiveSheet, ActiveRow);
     break;
     case 'Clase':
-      buscoPreguntas(preguntas, sheet, inscripcion, ActiveSheet, ActiveRow);
     break;
     case 'Retiro':
-      buscoPreguntas(preguntas, sheet, inscripcion, ActiveSheet, ActiveRow);
+      determinoCDias(inscripcion, evento);
     break;
     case 'Oraciones por la Paz Mundial':
-      buscoPreguntas(preguntas, sheet,inscripcion, ActiveSheet, ActiveRow);
     break;
     case 'Puya':
-      buscoPreguntas(preguntas, sheet, inscripcion, ActiveSheet, ActiveRow);
     break;
     case 'Preceptos':
-      buscoPreguntas(preguntas, sheet,inscripcion, ActiveSheet, ActiveRow);
+    break;
+    default:
+    break;
+  }
+}
+
+/*************************************************************
+*** CHEQUEO RETIRO U OTRO EVENTO CON ELECCIÓN DE COMPLETO  ***
+*** O POR DIA                                                ***
+*************************************************************/
+function determinoCDias(inscripcion, evento){
+  let e = armoEstilos();
+  switch (inscripcion.cantDias) {
+    case 'Voy a participar del evento completo':
+      inscripcion.xdia = '';
+      inscripcion.asistencia = `${e.b}${e.s}Te anotaste para participar del evento completo.${e.sf}`;
+    break;
+    case 'Voy a participar por día':
+      inscripcion.xdia = '1D';
+      evento.Programa = evento.Programa1d;
+      evento.ValorGeneral = evento.ValorGeneral1D;
+      inscripcion.asistencia = `${e.b}${e.s}Te anotaste para participar por 1 dia.${e.sf}`;
+    break;
+    case 'Voy a participar sólo Sábado':
+      inscripcion.xdia = '1D';
+      evento.Programa = evento.Programa1d;
+      evento.ValorGeneral = evento.ValorGeneral1D;
+      inscripcion.asistencia = `${e.b}${e.s}Te anotaste para participar del día Sábado.${e.sf}`;
     break;
     default:
     break;
@@ -127,20 +153,26 @@ function procesoEvento(evento, preguntas, sheet, inscripcion, ActiveSheet, Activ
 *** TRAE LOS DATOS DE LA PLANILLA DEL FORMULARIO EN BASE   ***
 *** AL OBJETO DE PREGUNTAS SEGÚN EL TIPO DE EVENTO         ***
 *************************************************************/
-function buscoPreguntas(preguntas, sheet, inscripcion, ActiveSheet, ActiveRow){
+function buscoPreguntas(preguntas, sheet, inscripcion, ActiveSheet, ActiveRow, evento){
   Logger.log(JSON.stringify(preguntas));
   inscripcion.nombre = (buscoColumna(preguntas.nombre,sheet) != 0) ? valorPlanilla(preguntas.nombre) : "--";
   inscripcion.apellido = (buscoColumna(preguntas.apellido,sheet) != 0) ? valorPlanilla(preguntas.apellido) : "--";
   inscripcion.mail = (buscoColumna(preguntas.email,sheet) != 0) ? valorPlanilla(preguntas.email) : "";
+  inscripcion.cMail = (buscoColumna(preguntas.cMail,sheet) != 0) ? valorPlanilla(preguntas.cMail) : "";
+  inscripcion.registro = (buscoColumna(preguntas.datos,sheet) != 0) ? valorPlanilla(preguntas.datos) : "";
+  inscripcion.barrio = (buscoColumna(preguntas.barrio,sheet) != 0) ? valorPlanilla(preguntas.barrio) : "";
+  inscripcion.telefono = (buscoColumna(preguntas.telefono,sheet) != 0) ? valorPlanilla(preguntas.telefono) : "";
   if(inscripcion.mail == ''){
     inscripcion.mail = (buscoColumna(preguntas.emailtk,sheet) != 0) ? valorPlanilla(preguntas.emailtk) : "";
   }
   inscripcion.infoTK = (buscoColumna(preguntas.infoTK,sheet) != 0) ? valorPlanilla(preguntas.infoTK) : "";
   inscripcion.pais = (buscoColumna(preguntas.pais,sheet) != 0) ? valorPlanilla(preguntas.pais) : "Argentina";
-  
-  // let grabaciones = (buscoColumna(Preguntas.grabaciones,sheet) != 0) ? valorPlanilla(Preguntas.grabaciones) : "";
+  if(evento.Tipo == 'Retiro'){
+    inscripcion.cantDias = (buscoColumna(preguntas.completoxd,sheet) != 0) ? valorPlanilla(preguntas.completoxd) : "";
+    inscripcion.grabaciones = (buscoColumna(preguntas.grabaciones,sheet) != 0) ? valorPlanilla(preguntas.grabaciones) : "";
+  }
   function valorPlanilla(valCampo){
-    return ActiveSheet.getRange(ActiveRow, buscoColumna(valCampo,sheet)).getValue();;
+    return ActiveSheet.getRange(ActiveRow, buscoColumna(valCampo,sheet)).getValue();
   }
 }
 
@@ -149,28 +181,27 @@ function buscoPreguntas(preguntas, sheet, inscripcion, ActiveSheet, ActiveRow){
 *** PARTICIPANTE Y LOS DESCUENTOS QUE APLICAN              ***
 *************************************************************/
 function determinoValor(inscripcion, evento, mail){
-  Logger.log(inscripcion.membresiaTK);
   Logger.log(JSON.stringify(inscripcion));
   Logger.log(JSON.stringify(evento));
-  switch (inscripcion.membresiaTK)  {
+  switch (inscripcion.membresiaTK){
     case "TK CLASES":
-      inscripcion.aPagar = evento.ValorTKClases;
-      chequeoImporte(inscripcion, mail, evento)
+      inscripcion.aPagar = evento['ValorTKClases'+inscripcion.xdia];
+      chequeoImporte(inscripcion, mail, evento);
     break;
     case "TK CORAZÓN":
-      inscripcion.aPagar = evento.ValorTKCorazon;
+      inscripcion.aPagar = evento['ValorTKCorazon'+inscripcion.xdia];
       chequeoImporte(inscripcion, mail, evento);
     break;
     case "TK BENEFACTOR":
-      inscripcion.aPagar = evento.ValorTKBenefactor;
+      inscripcion.aPagar = evento['ValorTKBenefactor'+inscripcion.xdia];
       chequeoImporte(inscripcion, mail, evento);
     break;
     case "TK BENEFACTOR PLUS":
-      inscripcion.aPagar = evento.ValorTKBenefactorPlus;
+      inscripcion.aPagar = evento['ValorTKBenefactorPlus'+inscripcion.xdia];
       chequeoImporte(inscripcion, mail, evento);
     break;
     case "SIN MEMBRESIA":
-      inscripcion.aPagar = evento.ValorGeneral;
+      inscripcion.aPagar = evento['ValorGeneral'+inscripcion.xdia];
       chequeoImporte(inscripcion, mail, evento);
       inscripcion.descuento = '';
     break; 
@@ -178,8 +209,7 @@ function determinoValor(inscripcion, evento, mail){
       Logger.log('no pasa por ninguna opción tk');
       inscripcion.aPagar = '--';
     break;
-  }  
-  Logger.log(inscripcion.aPagar);
+  }
 }
 
 /*************************************************************
@@ -189,18 +219,27 @@ function determinoValor(inscripcion, evento, mail){
 *************************************************************/
 function chequeoImporte(inscripcion, mail, evento){
   let e = armoEstilos();
+  if (inscripcion.descuento == 'si'){
+    inscripcion.descuento = textDesc(inscripcion, evento);
+  }
   if (inscripcion.aPagar != 0){
     inscripcion.textoInicial = mail.textoInicial;
     inscripcion.detallePago = `${e.b2}${e.f22}Valor del evento: $${evento.ValorGeneral}${e.b}Importe a pagar: $${e.fs}${e.s}
     ${e.f22G}${inscripcion.aPagar}${e.sf}${e.fs}`;
   }else {
     inscripcion.textoInicial = mail.textoInicialConfirmado;
+    inscripcion.aPagar = 0;
+    inscripcion.detallePago = '';
   }
 }
-function textDesc(inscripcion){
-  let e = armoEstilos();
-  let desc = inscripcion.membresiaTK;
-  return `${e.b}${e.f22}Se aplicó descuento de tarjeta Kadampa ${e.fs}${e.f22G}${desc.replace('TK ', '')}${e.fs}`;
+function textDesc(inscripcion, evento){
+  if(inscripcion.aPagar != evento.ValorGeneral){
+    let e = armoEstilos();
+    let desc = inscripcion.membresiaTK;
+    return `${e.b}${e.f22}Se aplicó descuento de tarjeta Kadampa ${e.fs}${e.f22G}${desc.replace('TK ', '')}${e.fs}`;
+  } else{
+    return '';
+  }
 }
 
 /*************************************************************
@@ -371,7 +410,7 @@ function encabezadoyPieMail(mail){
 *** IMPORTE A PAGAR, DATOS DE TK Y ENVIO O NO DEL MAIL      ***
 **************************************************************/
 function actualizoPlanilla(ActiveSheet, ActiveRow, sheet, inscripcion, evento){
-  ActiveSheet.getRange(ActiveRow, buscoColumna('Pendiente',sheet)).setValue(inscripcion.aPagar).setHorizontalAlignment('right');
+  ActiveSheet.getRange(ActiveRow, buscoColumna('Pendiente',sheet)).setValue('$'+inscripcion.aPagar).setHorizontalAlignment('right');
   ActiveSheet.getRange(ActiveRow, buscoColumna('Respuesta',sheet)).setValue('ENVIADA').setBackground('#67ad63').setFontColor('white');
   ActiveSheet.getRange(ActiveRow, 1).setBackground('#b3d1ff');
   if (inscripcion.completoInfo){
@@ -380,12 +419,12 @@ function actualizoPlanilla(ActiveSheet, ActiveRow, sheet, inscripcion, evento){
     ActiveSheet.getRange(ActiveRow, buscoColumna('Dirección de correo electrónico',sheet)).setValue(inscripcion.mail).setHorizontalAlignment('center');
     ActiveSheet.getRange(ActiveRow, buscoColumna('Celular',sheet)).setValue(inscripcion.telefono).setHorizontalAlignment('center');
     ActiveSheet.getRange(ActiveRow, buscoColumna('¿De que barrio sos?',sheet)).setValue(inscripcion.barrio).setHorizontalAlignment('center');
-    let tituloE = ActiveSheet.getRange(1, buscoColumna('NombreEvento',sheet)).getValue();
+    let tituloE = ActiveSheet.getRange(2, buscoColumna('NombreEvento',sheet)).getValue();
     if(tituloE == ''){
-       ActiveSheet.getRange(ActiveRow, buscoColumna('NombreEvento',sheet)).setValue(evento.Nombre).setHorizontalAlignment('center');
+      ActiveSheet.getRange(2, buscoColumna('NombreEvento',sheet)).setValue(evento.Nombre).setHorizontalAlignment('left');
     }
   }
-  ActiveSheet.getRange(ActiveRow, buscoColumna('Membresía',sheet)).setValue(inscripcion.membresiaTK).setHorizontalAlignment('center');    
+  ActiveSheet.getRange(ActiveRow, buscoColumna('Membresía',sheet)).setValue(inscripcion.membresiaTK).setHorizontalAlignment('left');    
   if(inscripcion.aPagar == 0){
       ActiveSheet.getRange(ActiveRow, buscoColumna('Pago',sheet)).setValue('OK').setHorizontalAlignment('center').setBackground('#67ad63');
   } else{
@@ -408,10 +447,11 @@ function envioMail(mail, inscripcion, evento){
   let detalle = `${e.f22} ${e.b2} ${e.s}DETALLES DEL EVENTO: ${e.sf}${e.fs}${e.b}
   ${e.f18B}Nombre: ${e.fs}${e.f18}${e.s} ${evento.Nombre} ${e.sf}${e.fs}${e.b}
   ${e.f18B}Fecha y hora: ${e.fs}${e.f18}${e.s} ${evento.Fecha} ${e.sf}${e.fs}${e.b}
-  ${e.f18B}Lugar: ${e.fs}${e.f18}${e.s} ${evento.Lugar} ${e.sf}${e.b} 
+  ${e.f18B}Lugar: ${e.fs}${e.f18}${e.s}${evento.Lugar}${e.sf}${e.b}
+  ${e.f18B}Maestr@: ${e.fs}${e.f18}${e.s}${evento.Maestrxs}${e.sf}${e.b} 
   ${disponibilidad}${e.b}${evento.Programa}${e.fs}`;
   let htmlBody =  `${partesMail.encabezadoMail}${e.f28}${e.b}¡Hola ${e.s}${inscripcion.nombre} ${inscripcion.apellido}!${e.sf}
-  ${e.f22}${inscripcion.textoInicial}${inscripcion.detallePago}${inscripcion.descuento}${e.fs}${e.f18B}
+  ${e.f22}${inscripcion.textoInicial}${inscripcion.asistencia}${inscripcion.detallePago}${inscripcion.descuento}${e.fs}${e.f18B}
   ${inscripcion.textoError}${e.fs}${e.f18}${mail.pagoTransfer}
   ${e.fs}${detalle}${e.f18}${mail.dudas}${e.fs}${partesMail.pieMail}`;
   let advancedOpts = {name: "Inscripciones - Nagaryhuna", htmlBody: htmlBody};
@@ -430,6 +470,8 @@ function checkMembresia(inscripcion, mail){
   let sheetDatosTKZN = ss2.getSheetByName('TK 2023');
   let datosTKZN = sheetDatosTKZN.getRange(3, 1, sheetDatosTKZN.getLastRow(), 9).getValues();
   inscripcion.textoError = '';
+  inscripcion.membresiaTK = '';
+  let correoPlanilla = '';
   buscoPlanillaZN();
 
   function buscoPlanillaZN(){
@@ -463,16 +505,61 @@ function checkMembresia(inscripcion, mail){
           }
         } else {
           inscripcion.membresiaTK = 'SIN MEMBRESIA';
-          inscripcion.textoError = `${mail.errorMembresia}`;
+          inscripcion.textoError = mail.errorMembresia;
         }
-      } else {
-        inscripcion.membresiaTK = 'SIN MEMBRESIA';
-
+        break;
       }
     }
-    if (inscripcion.membresiaTK == '' || inscripcion.membresiaTK == 'SIN MEMBRESIA'){
+    if (inscripcion.membresiaTK == ''){
       inscripcion.membresiaTK = 'SIN MEMBRESIA';
       inscripcion.textoError = mail.errorMembresia;
     }
   }
 }
+
+/**************************************************************
+*** SI ES NUEVO PARTICIPANTE Y ACCEDE A DEJAR SUS DATOS     ***
+*** REGISTRADOS LO CARGO EN LA PLANILLA                     ***
+*** REGISTRO DE PARTICIPANTES                               ***
+**************************************************************/
+function nuevoParticipante(inscripcion){
+  if(inscripcion.nuevo == true){
+    let resp1 = "Deseo que se guarden mis datos";
+    let resp2 = "Deseo recibir el boletín por mail";
+    if(inscripcion.registro.includes(resp1)){
+      let ss3 = SpreadsheetApp.openById('1WeqfjxRu3dr7HyemXOhtJbqnl0uAPFrlzH_ELrUH8nY');
+      let sheetDatosRegistro = ss3.getSheetByName('REGISTRO');
+      let datosRegistro = sheetDatosRegistro.getRange(2, 1, sheetDatosRegistro.getLastRow(), 3).getValues();
+      let correoPlanilla = '';
+      let encontrado = false;
+      for(let i = 0;i<datosRegistro.length; i++){
+        correoPlanilla = datosRegistro[i][2].toString();
+        correoPlanilla = correoPlanilla.trim().toLowerCase();
+        if(correoPlanilla == inscripcion.mail){
+          encontrado = true;
+          break;
+        } 
+      }
+      if (encontrado == false){
+        let date = new Date();
+        let ahora = (date.toLocaleString('es-AR', {
+          day: 'numeric', // numeric, 2-digit
+          month: 'long', // numeric, 2-digit, long, short, narrow
+          hour: 'numeric', // numeric, 2-digit
+          minute: 'numeric', // numeric, 2-digit
+          second: 'numeric', // numeric, 2-digit
+        }));
+        let boletin = ''
+        if(inscripcion.registro.includes(resp2)){
+          boletin = 'Si';
+        } else {
+          boletin = 'No';
+        }
+        sheetDatosRegistro.appendRow([inscripcion.nombre, inscripcion.apellido, inscripcion.mail, inscripcion.cMail, inscripcion.telefono, inscripcion.barrio, boletin, ahora]);
+      }
+    }
+  }
+}
+
+
+
