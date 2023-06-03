@@ -1,0 +1,152 @@
+function emailOnFormSubmit(e) {
+  let activeSheet = SpreadsheetApp.getActiveSheet();
+  let activeRow = activeSheet.getLastRow();
+  let sheet = activeSheet.getDataRange().getValues();
+  let inscripcion = {};
+  let date = new Date();
+  inscripcion.ahora = (date.toLocaleString('es-AR', {
+    day: 'numeric',
+    month: 'long',
+    hour: 'numeric',
+    minute: 'numeric',
+    second: 'numeric',
+  }));
+  colTemporal = sheet[0].indexOf('Nombre')+1;  
+  inscripcion.nombre = activeSheet.getRange(activeRow, colTemporal).getValue();
+  colTemporal = sheet[0].indexOf('Apellido')+1;  
+  inscripcion.apellido = activeSheet.getRange(activeRow, colTemporal).getValue();
+  colTemporal = sheet[0].indexOf('Dirección de correo electrónico')+1;  
+  inscripcion.mail = activeSheet.getRange(activeRow, colTemporal).getValue();
+  colTemporal = sheet[0].indexOf('Confirmá tu dirección de correo electrónico')+1;  
+  inscripcion.cMail = activeSheet.getRange(activeRow, colTemporal).getValue();
+  colTemporal = sheet[0].indexOf('Celular')+1;  
+  inscripcion.celular = activeSheet.getRange(activeRow, colTemporal).getValue();
+  colTemporal = sheet[0].indexOf('¿Dónde vivís? (Ciudad / Provincia / Barrio)')+1;  
+  inscripcion.ciudad = activeSheet.getRange(activeRow, colTemporal).getValue();
+  colTemporal = sheet[0].indexOf('¿Deseas recibir nuestro Boletín informativo?')+1;  
+  inscripcion.boletin = activeSheet.getRange(activeRow, colTemporal).getValue(); 
+  inscripcion.news = 'No';
+  if(inscripcion.boletin.includes('Deseo recibir el boletín por mail')){
+    inscripcion.news = 'Si';
+  }
+  let encontrado = buscoPersona(inscripcion);
+
+  if(encontrado == false){
+    inscripcion.cambio = 'Registro';
+    Logger.log('no encuentra mail');
+    sheetReg.appendRow([inscripcion.nombre, inscripcion.apellido, inscripcion.mail, inscripcion.cMail, inscripcion.celular, inscripcion.ciudad, inscripcion.news, inscripcion.ahora]);
+  }
+  envioMail(inscripcion);
+  activeSheet.getRange(activeRow, 9).setValue('OK').setBackground('#67ad63').setFontColor('white').setHorizontalAlignment('center');
+}
+
+/**************************************************************
+*** BUSCO EN PLANILLA REGISTRO                              ***
+**************************************************************/
+function buscoPersona(inscripcion){
+  let ss3 = SpreadsheetApp.openById('1WeqfjxRu3dr7HyemXOhtJbqnl0uAPFrlzH_ELrUH8nY');
+  let sheetDatosRegistro = ss3.getSheetByName('REGISTRO');
+  let datosRegistro = sheetDatosRegistro.getRange(1, 1, sheetDatosRegistro.getLastRow(), 8).getValues();
+  let correoPlanilla = '';
+  let existe = false;
+  for(let i = 0;i<datosRegistro.length; i++){
+    correoPlanilla = datosRegistro[i][2].toString();
+    correoPlanilla = correoPlanilla.trim().toLowerCase();
+    if(correoPlanilla == inscripcion.mail){
+      Logger.log('encuentra mail');
+      existe = true;
+      i = i + 1;
+      sheetDatosRegistro.getRange(i, 1).setValue(inscripcion.nombre);
+      sheetDatosRegistro.getRange(i, 2).setValue(inscripcion.apellido);
+      sheetDatosRegistro.getRange(i, 3).setValue(inscripcion.mail);
+      sheetDatosRegistro.getRange(i, 4).setValue(inscripcion.cMail);
+      sheetDatosRegistro.getRange(i, 5).setValue(inscripcion.celular);
+      sheetDatosRegistro.getRange(i, 6).setValue(inscripcion.ciudad);
+      sheetDatosRegistro.getRange(i, 7).setValue(inscripcion.news);
+      sheetDatosRegistro.getRange(i, 8).setValue(inscripcion.ahora);
+      inscripcion.cambio = 'Modificación';
+      break;
+    }
+  }
+  return existe;
+}
+
+function envioMail(inscripcion){
+  let e = armoEstilos();
+  let partesMail = encabezadoyPieMail();
+  let subject = `${inscripcion.cambio} de datos`;
+  let textoInicial = `Hola, ${inscripcion.nombre}, registraste los siguientes datos: `;
+  let datos = `${e.b2}<table style="text-align: left;">
+    <tr>
+      <th>${e.f18B}Nombre:${e.fs}</th>
+      <td>${e.f18}${e.s}${inscripcion.nombre}${e.sf}${e.fs}</td>
+    </tr>
+    <tr>
+      <th>${e.f18B}Apellido:${e.fs}</th>
+      <td>${e.f18}${e.s}${inscripcion.apellido}${e.sf}${e.fs}</td>
+    </tr>
+    <tr>
+      <th>${e.f18B}Mail:${e.fs}</th>
+      <td>${e.f18}${e.s}${inscripcion.mail}${e.sf}${e.fs}</td>
+    </tr>
+    <tr>
+      <th>${e.f18B}Celular:${e.fs}</th>
+      <td>${e.f18}${e.s}${inscripcion.celular}${e.sf}${e.fs}</td>
+    </tr>
+    <tr>
+      <th>${e.f18B}Barrio / Ciudad:${e.fs}</th>
+      <td>${e.f18}${e.s}${inscripcion.ciudad}${e.sf}${e.fs}</td>
+    </tr>
+    <tr>
+      <th>${e.f18B}Recibe boletín:${e.fs}</th>
+      <td>${e.f18}${e.s}${inscripcion.news}${e.sf}${e.fs}</td>
+    </tr>
+  </table>${e.b2}`;
+  let cambios = `${e.f18}Si necesitas realizar algún cambio en los datos puedes 
+  llenar el formulario nuevamente desde <a href='https://docs.google.com/forms/d/e/1FAIpQLSflG-RfcL2pcYpfmWGsYOcNt3xVjPbhpM_XFLFzLgdm1CMaSw/viewform'>este link</a>.❤️${e.fs}${e.b2}`;
+  let htmlBody =  `${partesMail.encabezadoMail}${e.b}${e.f22}${textoInicial}${e.fs}${datos}${cambios}${partesMail.pieMail}`;
+  let advancedOpts = {name: "Registro - Nagaryhuna", htmlBody: htmlBody};
+  let emailBody = "¡Hola! Registraste los datos con éxito.\nMuchas Gracias";
+  MailApp.sendEmail(inscripcion.mail, subject, emailBody, advancedOpts);
+}
+
+function encabezadoyPieMail(){
+  let e = armoEstilos();
+  let partesMail = {
+      encabezadoMail: "<table width='720' border='0' align='center' bgcolor='white' cellpadding='0' cellspacing='0'>"+
+        "<tr bgcolor='#2784d6'><td><img src='https://meditarenargentina.org/wp-content/uploads/2022/11/unnamed.png' alt='Social Media' width='720' usemap='#m_-6367196319079066917_Redes' title='CMKA Social' border='0' style='display:block'>"+
+        "<map name='m_-6367196319079066917_Redes' id='m_-6367196319079066917Redes'>"+
+        "<area shape='rect' coords='01,01,90,70'  href='https://www.facebook.com/meditarenzonanorte' alt='Facebook CMKA' target='_blank'>"+
+        "<area shape='rect' coords='92,01,188,70' href='https://www.instagram.com/meditarenzonanorte' alt='Instagram CMKA' target='_blank'>"+
+        "<area shape='rect' coords='190,01,303,70' href='https://www.youtube.com/channel/UC8Bmrclk97g2onCsWRwZCyw' alt='Youtube CMKA' target='_blank'>"+
+        "<area shape='rect' coords='306,01,410,70' href='https://open.spotify.com/artist/0SKgzlnrfGPaeQfUUgDhb7/discography/album' alt='Spotify' target='_blank'>"+
+        "<area shape='rect' coords='412,01,512,70' href='https://api.whatsapp.com/send?phone=541166633921' alt='Whatsapp' target='_blank'>"+
+        "<area shape='rect' coords='515,01,616,70' href='https://twitter.com/meditarenarg' alt='Twitter CMKA' target='_blank'>"+
+        "<area shape='rect' coords='618,01,720,70' href='https://meditarenzonanorte.org/' alt='web Centro de meditación KadampaArgentina' target='_blank'>"+
+        "</map></td></tr><tr bgcolor='#fff'><td><img src='https://meditarenargentina.org/wp-content/uploads/2022/11/unnamed.jpg' width='720' style='display:block' alt='Banner Header'>"+
+        "</td></tr><tr><td valign='middle' style='margin-bottom:32px;font-family:Google Sans,Roboto,Arial,Helvetica,sans-serif;font-style:normal;font-size:28px;line-height:36px;color:#3c4043'>",
+      pieMail: "</td></tr><tr height='80px' bgcolor='#B88477'><td align='center' valign='middle' style='padding:15px 2px 2px 15px;'>" + e.f28W + "¡Esperamos que disfrutes de las actividades!<br><strong>Centro de Meditación Kadampa Argentina</strong>" + e.fs + "</td></tr>"
+  }
+  return partesMail;
+}
+
+function armoEstilos(){
+  var estilos = {
+    f28: "<span style='margin-bottom:32px;font-family:Google Sans,Roboto,Arial,Helvetica,sans-serif;font-style:normal;font-size:28px;line-height:36px;color:#3c4043'>",
+    f28W: "<span style='margin-bottom:32px;font-family:Google Sans,Roboto,Arial,Helvetica,sans-serif;font-style:normal;font-size:28px;line-height:36px;color:#ffffff'>",
+    f22G: "<span style='margin-bottom:32px;font-family:Google Sans,Roboto,Arial,Helvetica,sans-serif;font-style:normal;font-size:22px;line-height:36px;color:#0a9426'>",
+    f22B: "<span style='margin-bottom:32px;font-family:Google Sans,Roboto,Arial,Helvetica,sans-serif;font-style:normal;font-size:22px;line-height:36px;color:#4575ec'>",
+    f22: "<span style='margin-bottom:32px;font-family:Google Sans,Roboto,Arial,Helvetica,sans-serif;font-style:normal;font-size:22px;line-height:36px;color:#3c4043'>",
+    f18: "<span style='margin-bottom:32px;font-family:Google Sans,Roboto,Arial,Helvetica,sans-serif;font-style:normal;font-size:18px;line-height:36px;color:#3c4043'>",
+    f18G: "<span style='margin-bottom:32px;font-family:Google Sans,Roboto,Arial,Helvetica,sans-serif;font-style:normal;font-size:18px;line-height:36px;color:#0a9426'>",
+    f18B: "<span style='margin-bottom:32px;font-family:Google Sans,Roboto,Arial,Helvetica,sans-serif;font-style:normal;font-size:18px;line-height:36px;color:#4575ec'>",
+    f22T: "<span style='margin-left:32px;font-family:Google Sans,Roboto,Arial,Helvetica,sans-serif;font-style:normal;font-size:22px;line-height:36px;color:#3c4043'>",
+    f22P: "<span style='margin-bottom:32px;font-family:Google Sans,Roboto,Arial,Helvetica,sans-serif;font-style:normal;font-size:22px;line-height:36px;color:#a66cf5'>",
+    fs: "</span>",
+    b : "<br>",
+    b2: "<br><br>",
+    s : "<strong>",
+    sf: "</strong>"
+  }
+  return estilos;
+}
