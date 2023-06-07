@@ -24,7 +24,7 @@ function formateoPlanilla(){
   // SI NO FORMATEO LA PLANILLA Y AGREGO COLUMNAS
   if (colTemporal == 0){
     let columColorAlerta = [ActiveCol+5, ActiveCol];
-    let columnas = ['Pendiente', 'Respuesta', 'Envio Info TKS', 'Membresía', 'Pago', 'Recordatorio pago', 'Confirmación', 'NombreEvento', 'FechaPago', 'Valor', 'Forma', 'Asistencia'];
+    let columnas = ['Pendiente', 'Respuesta', 'Envio Info TKs', 'Membresía', 'Pago', 'Recordatorio pago', 'Confirmación', 'NombreEvento', 'FechaPago', 'Valor', 'Forma', 'Asistencia'];
     for(let i = 0; i < columnas.length; i++){
       ActiveSheet.insertColumnAfter(ActiveCol);
       if (columnas[i] == 'Pago' || columnas[i] == 'Pendiente'){
@@ -71,30 +71,35 @@ function procesoRespuestas(e, tituloEvento){
   let mail = datosPlanillaInfoCursosZN('Info mail', tituloEvento);
   let inscripcion = {};
   evento.titulo = tituloEvento;
-  inscripcion.textoError = '';
-  inscripcion.xdia = '';
-  inscripcion.descuento = '';
-  inscripcion.asistencia = '';
+  inicializoInsc(inscripcion);
   buscoPreguntas(preguntas, sheet, inscripcion, ActiveSheet, ActiveRow, evento);
   procesoEvento(evento, inscripcion);
 
-  if (inscripcion.infoTK == 'Sí, tengo tarjeta Kadampa' ){
+  if (inscripcion.tkORegistro == 'Sí, tengo tarjeta Kadampa' ){
+    inscripcion.mail = inscripcion.mailTk;
     checkMembresia(inscripcion, mail);
     if(inscripcion.membresiaTK == 'SIN MEMBRESIA'){
       inscripcion.descuento = '';
     } else {
       inscripcion.descuento = 'si';
-    } 
-  } else{
+    }
+  } else if(inscripcion.tkORegistro == 'Es mi primera actividad'){
     inscripcion.membresiaTK = 'SIN MEMBRESIA';
     inscripcion.descuento = '';
     inscripcion.textoError = '';
     inscripcion.nuevo = true;
+  } else if(inscripcion.tkORegistro == 'Estoy registrado sin Tarjeta Kadampa'){
+    inscripcion.mail = inscripcion.mailReg;
+    buscoPersona(inscripcion);
+    inscripcion.membresiaTK = 'SIN MEMBRESIA';
+    inscripcion.descuento = '';
   }
+
   determinoValor(inscripcion, evento, mail);
-  actualizoPlanilla(ActiveSheet, ActiveRow, sheet, inscripcion, evento);
   envioMail(mail, inscripcion, evento);
   nuevoParticipante(inscripcion);
+  // envioInfoTK(mail, inscripcion, ActiveSheet, ActiveRow, sheet);
+  actualizoPlanilla(ActiveSheet, ActiveRow, sheet, inscripcion, evento);
 }
 
 /*************************************************************
@@ -158,15 +163,21 @@ function buscoPreguntas(preguntas, sheet, inscripcion, ActiveSheet, ActiveRow, e
   inscripcion.nombre = (buscoColumna(preguntas.nombre,sheet) != 0) ? valorPlanilla(preguntas.nombre) : "--";
   inscripcion.apellido = (buscoColumna(preguntas.apellido,sheet) != 0) ? valorPlanilla(preguntas.apellido) : "--";
   inscripcion.mail = (buscoColumna(preguntas.email,sheet) != 0) ? valorPlanilla(preguntas.email) : "";
+  inscripcion.mail = inscripcion.mail.trim().toLowerCase();
+  inscripcion.mailTk = (buscoColumna(preguntas.emailtk,sheet) != 0) ? valorPlanilla(preguntas.emailtk) : "";
+  inscripcion.mailTk = inscripcion.mailTk.trim().toLowerCase();
   inscripcion.cMail = (buscoColumna(preguntas.cMail,sheet) != 0) ? valorPlanilla(preguntas.cMail) : "";
+  inscripcion.cMail = inscripcion.cMail.trim().toLowerCase();
+  inscripcion.mailReg = (buscoColumna(preguntas.mailReg,sheet) != 0) ? valorPlanilla(preguntas.mailReg) : "";
+  inscripcion.mailReg = inscripcion.mailReg.trim().toLowerCase();
   inscripcion.registro = (buscoColumna(preguntas.datos,sheet) != 0) ? valorPlanilla(preguntas.datos) : "";
   inscripcion.barrio = (buscoColumna(preguntas.barrio,sheet) != 0) ? valorPlanilla(preguntas.barrio) : "";
   inscripcion.telefono = (buscoColumna(preguntas.telefono,sheet) != 0) ? valorPlanilla(preguntas.telefono) : "";
-  if(inscripcion.mail == ''){
-    inscripcion.mail = (buscoColumna(preguntas.emailtk,sheet) != 0) ? valorPlanilla(preguntas.emailtk) : "";
-  }
   inscripcion.infoTK = (buscoColumna(preguntas.infoTK,sheet) != 0) ? valorPlanilla(preguntas.infoTK) : "";
+  inscripcion.tkORegistro = (buscoColumna(preguntas.tkORegistro,sheet) != 0) ? valorPlanilla(preguntas.tkORegistro) : "";
   inscripcion.pais = (buscoColumna(preguntas.pais,sheet) != 0) ? valorPlanilla(preguntas.pais) : "Argentina";
+  inscripcion.envioInfoTk = (buscoColumna(preguntas.envioInfoTk,sheet) != 0) ? valorPlanilla(preguntas.envioInfoTk) : "";
+  inscripcion.envioInfoTkR = (buscoColumna(preguntas.envioInfoTkR,sheet) != 0) ? valorPlanilla(preguntas.envioInfoTkR) : "";
   if(evento.Tipo == 'Retiro'){
     inscripcion.cantDias = (buscoColumna(preguntas.completoxd,sheet) != 0) ? valorPlanilla(preguntas.completoxd) : "";
     inscripcion.grabaciones = (buscoColumna(preguntas.grabaciones,sheet) != 0) ? valorPlanilla(preguntas.grabaciones) : "";
@@ -230,6 +241,7 @@ function chequeoImporte(inscripcion, mail, evento){
     inscripcion.textoInicial = mail.textoInicialConfirmado;
     inscripcion.aPagar = 0;
     inscripcion.detallePago = '';
+    mail.pagoTransfer = '';
   }
 }
 function textDesc(inscripcion, evento){
@@ -366,7 +378,7 @@ function armoEstilos(){
 function chkEnvio(){
   let puedeEnviar = true;
   let restantes = verificoCuotaMailsmsg();
-  if (restantes == 0){
+  if (restantes < 1){
     puedeEnviar = false;
   }
   return puedeEnviar
@@ -459,6 +471,17 @@ function envioMail(mail, inscripcion, evento){
           "\nPróximamente recibirás un email con más detalles sobre éste evento y tu información de pago." +
           "\nMuchas Gracias";
   MailApp.sendEmail(inscripcion.mail, subject, emailBody, advancedOpts);
+//   try {
+//   MailApp.sendEmail({
+//     to: "destinatario@example.com",
+//     subject: "Asunto del correo",
+//     body: "Contenido del correo"
+//   });
+//   // El correo electrónico se envió exitosamente
+// } catch (error) {
+//   // Ocurrió un error durante el envío del correo electrónico
+//   console.error("Error al enviar el correo electrónico:", error);
+// }
 }
 
 /**************************************************************
@@ -523,23 +546,14 @@ function checkMembresia(inscripcion, mail){
 *** REGISTRO DE PARTICIPANTES                               ***
 **************************************************************/
 function nuevoParticipante(inscripcion){
+  let ss3 = SpreadsheetApp.openById('1WeqfjxRu3dr7HyemXOhtJbqnl0uAPFrlzH_ELrUH8nY');
+  let sheetDatosRegistro = ss3.getSheetByName('REGISTRO');
   if(inscripcion.nuevo == true){
     let resp1 = "Deseo que se guarden mis datos";
     let resp2 = "Deseo recibir el boletín por mail";
+    let encontrado = false;
     if(inscripcion.registro.includes(resp1)){
-      let ss3 = SpreadsheetApp.openById('1WeqfjxRu3dr7HyemXOhtJbqnl0uAPFrlzH_ELrUH8nY');
-      let sheetDatosRegistro = ss3.getSheetByName('REGISTRO');
-      let datosRegistro = sheetDatosRegistro.getRange(2, 1, sheetDatosRegistro.getLastRow(), 3).getValues();
-      let correoPlanilla = '';
-      let encontrado = false;
-      for(let i = 0;i<datosRegistro.length; i++){
-        correoPlanilla = datosRegistro[i][2].toString();
-        correoPlanilla = correoPlanilla.trim().toLowerCase();
-        if(correoPlanilla == inscripcion.mail){
-          encontrado = true;
-          break;
-        } 
-      }
+      encontrado = buscoPersona(inscripcion);
       if (encontrado == false){
         let date = new Date();
         let ahora = (date.toLocaleString('es-AR', {
@@ -561,5 +575,142 @@ function nuevoParticipante(inscripcion){
   }
 }
 
+/**************************************************************
+*** BUSCO EN PLANILLA REGISTRO                              ***
+**************************************************************/
+function buscoPersona(inscripcion){
+  let ss3 = SpreadsheetApp.openById('1WeqfjxRu3dr7HyemXOhtJbqnl0uAPFrlzH_ELrUH8nY');
+  let sheetDatosRegistro = ss3.getSheetByName('REGISTRO');
+  let datosRegistro = sheetDatosRegistro.getRange(2, 1, sheetDatosRegistro.getLastRow(), 8).getValues();
+  let correoPlanilla = '';
+  let encontrado = false;
+  for(let i = 0;i<datosRegistro.length; i++){
+    correoPlanilla = datosRegistro[i][2].toString();
+    correoPlanilla = correoPlanilla.trim().toLowerCase();
+    if(correoPlanilla == inscripcion.mail){
+      encontrado = true;
+      if(inscripcion.nuevo == false){
+        inscripcion.nombre = datosRegistro[i][0];
+        inscripcion.apellido = datosRegistro[i][1];
+        inscripcion.mail = datosRegistro[i][2];
+        inscripcion.telefono = datosRegistro[i][4];
+        inscripcion.barrio = datosRegistro[i][5];
+        inscripcion.completoInfo = true;
+      }
+      break;
+    }
+  }
+  if(encontrado == false){
+    inscripcion.textoError = `<br>No se ha encontrado tu registro, podés registrarte desde <a href='https://docs.google.com/forms/d/e/1FAIpQLSflG-RfcL2pcYpfmWGsYOcNt3xVjPbhpM_XFLFzLgdm1CMaSw/viewform'>este link</a>.
+    Muchas gracias y lamentamos el inconveniente. ❤️`;
+  }
+  return encontrado;
+}
 
+function inicializoInsc(inscripcion){
+  inscripcion.textoError = '';
+  inscripcion.xdia = '';
+  inscripcion.descuento = '';
+  inscripcion.asistencia = '';
+  inscripcion.nuevo = false;
+}
 
+/**************************************************************
+*** ENVIO MAILS DE CONFIRMACION                            ***
+**************************************************************/
+function envioConfirmacion(){
+  let ActiveSheet = SpreadsheetApp.getActiveSheet();
+  let ActiveRow = ActiveSheet.getLastRow();
+  let sheet = ActiveSheet.getDataRange().getValues();
+  let inscripciones = ActiveSheet.getRange(1, 1, ActiveSheet.getLastRow(),ActiveSheet.getLastColumn()).getValues();
+  let mensaje = {
+    titulo: 'ENVÍO MAILS DE CONFIRMACIÓN',
+    continua: 'Seguro que quiere continuar?',
+    exito: 'La acción ha sido realizada con éxito. Correos enviados: ',
+    noenvio: 'No hay correos a enviar'
+  }
+  let tituloEvento = ActiveSheet.getRange(1, buscoColumna('NombreEvento', sheet)).getValue();
+  let preguntas = datosPlanillaInfoCursosZN('Preguntas form', tituloEvento);
+  let evento = datosPlanillaInfoCursosZN('Cursos', tituloEvento);
+  let mail = datosPlanillaInfoCursosZN('Info mail', tituloEvento);
+  let inscripcion = {};
+  evento.titulo = tituloEvento;
+  inicializoInsc(inscripcion);
+  buscoPreguntas(preguntas, sheet, inscripcion, ActiveSheet, ActiveRow, evento);
+  procesoEvento(evento, inscripcion);
+  let response = Browser.msgBox(mensaje.titulo, mensaje.continua, Browser.Buttons.YES_NO); 
+  if ( response == "yes"){
+    let correosEnviados = recorroPlanilla();
+    if(correosEnviados > 0){
+      Browser.msgBox(mensaje.titulo, mensaje.exito + correosEnviados, Browser.Buttons.OK); 
+    } else{
+      Browser.msgBox(mensaje.titulo, mensaje.noenvio, Browser.Buttons.OK); 
+    }
+  }
+  recorroPlanilla();
+
+  function recorroPlanilla(){
+    let e = armoEstilos();
+    for(var i = 0;i<inscripciones.length; i++){
+        if(inscripciones[i][pendiente] == 0){
+          textoPago = (inscripciones[i][pago]).toString().trim().toUpperCase();
+          if(textoPago == 'OK'){
+            if(inscripcion[i][confirmacion] == ''){
+              datosInscripcion = traigoDatosParticipante(i);
+              datosCurso = traigoDatosCursos(tituloEvento);
+              // Logger.log("tipo de insc " + datosInscripcion.eventoFinDeSemana);
+              if(datosInscripcion.eventoFinDeSemana == 'VOY A PARTICIPAR DEL FIN DE SEMANA'){
+                programa = datosCurso.programaFinDeSemana;
+                datosInscripcion.eventoFinDeSemana = "<br>Tu inscripción: " + datosInscripcion.eventoFinDeSemana;
+              } else {
+                programa = datosCurso.programa;
+              }
+              datosMail = CargoDatosMail();
+              textoAcceso = chModalidad();
+              if(datosCurso.tipo == "Reto 21 dias"){
+                avisoOnline = "";
+                textoAcceso = datosMail.infoAccesoPresencialSinLink;
+              }
+              partesMail = encabezadoyPieMail(datosMail);
+              saludoInicial = e.styleF28 + "¡Hola " + '<strong>' + datosInscripcion.nombre  + " " + 
+                              datosInscripcion.apellido + "</strong>!" + e.finStyle;
+              htmlBody = partesMail.encabezadoMail + saludoInicial + e.styleF22 + datosMail.TextoInicialConfirmado + e.finStyle + 
+                          e.styleF22Tab + 'Membresía: ' + e.finStyle + e.styleF22Morado + datosInscripcion.membresia + e.finStyle + '<br>' +
+                          e.styleF18 + datosInscripcion.completoDia + datosInscripcion.completoDiaRetiro + datosInscripcion.eventoFinDeSemana +
+                          " " + datosInscripcion.diasQueParticipa + datosInscripcion.introduccion + e.finStyle + 
+                          datosEvento + e.styleF18 + programa + e.finStyle + e.styleF22Morado + datosCurso.webDelEvento +
+                          e.finStyle + e.styleF18 + textoAcceso + e.finStyle + 
+                          e.styleF18Blue + datosInscripcion.linksYoutube + e.finStyle + e.styleF22Morado + avisoOnline + e.finStyle +
+                          e.styleF18 + datosMail.Dudas + e.finStyle + partesMail.pieMail;
+              envioMail(htmlBody, datosInscripcion.mail, asunto);
+              
+              ActiveSheet.getRange(i+1, buscoColumna('Confirmación', sheet)).setValue('ENVIADA').setBackground('#67ad63').setFontColor('white');
+              correos += 1;
+            }
+          }
+        }
+    }
+    return correos;
+  }
+}
+
+function envioInfoTK(mail, inscripcion, ActiveSheet, ActiveRow, sheet){
+  if(inscripcion.envioInfoTk == 'Si!' || inscripcion.envioInfoTkR == 'Si!'){
+    let col = 0;
+    let seEnvia = chkEnvio();
+    if(seEnvia == true){
+      let saludoInfo = `¡Hola <font color=\"green\"><strong>" + Nombre + " " + Apellido + "</strong></font>" + "!" + "<br/>Espero que estés muy bien.<br/><br/>Muchas gracias por tu interés en nuestras actividades.<br/>`;  
+      let subject = "Información solicitada sobre Tarjetas Kadampa";
+      let emailBody = "";
+      let htmlBody = saludoInfo;
+      let advancedOpts = { name: "INFORMACIÓN - CMKA", htmlBody: htmlBody};
+      MailApp.sendEmail(mail, subject, emailBody, advancedOpts);
+      col = sheet[0].indexOf('Envio Info TKs')+1;
+      ActiveSheet.getRange(ActiveRow, col).setValue(mailRestantes).setBackground('#67ad63').setFontColor('white');
+    } else {
+        col = sheet[0].indexOf('Envio Info TKs')+1;
+        ActiveSheet.getRange(ActiveRow, col).setValue(mailRestantes).setBackground('#f02e61').setFontColor('white');
+        ActiveSheet.getRange(ActiveRow, buscoColumna('Pendiente',sheet)).setValue('$'+inscripcion.aPagar).setHorizontalAlignment('right');
+    }
+  }
+}
