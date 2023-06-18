@@ -110,6 +110,9 @@ function procesoEvento(evento, inscripcion){
   switch (evento.Tipo) {
     case 'Curso':
     break;
+    case 'Curso Especial':
+      determinoPack(inscripcion, evento);
+    break;
     case 'Clase':
     break;
     case 'Retiro':
@@ -128,7 +131,7 @@ function procesoEvento(evento, inscripcion){
 
 /*************************************************************
 *** CHEQUEO RETIRO U OTRO EVENTO CON ELECCIÓN DE COMPLETO  ***
-*** O POR DIA                                                ***
+*** O POR DIA                                              ***
 *************************************************************/
 function determinoCDias(inscripcion, evento){
   let e = armoEstilos();
@@ -155,6 +158,66 @@ function determinoCDias(inscripcion, evento){
 }
 
 /*************************************************************
+*** CHEQUEO CURSOS ESPECIALES PACK DE CLASES O             ***
+*** CLASES INDIVIDUALES                                    ***
+*************************************************************/
+function determinoPack(inscripcion, evento){
+  let e = armoEstilos();
+  if (inscripcion.packClases.includes('Pack')){
+    inscripcion.chPack = 'Pack';
+  }
+  if (inscripcion.packClases.includes('Primera')){
+    inscripcion.chPack = 'Primera clase';
+    inscripcion.packClases = inscripcion.packClases.replace('Primera ', '');
+  }
+    if (inscripcion.packClases.includes('Segunda')){
+    inscripcion.chPack = 'Segunda clase';
+    inscripcion.packClases = inscripcion.packClases.replace('Segunda ', '');
+  }
+    if (inscripcion.packClases.includes('Tercera')){
+    inscripcion.chPack = 'Tercera clase';
+    inscripcion.packClases = inscripcion.packClases.replace('Tercera ', '');
+  }
+    if (inscripcion.packClases.includes('Cuarta')){
+    inscripcion.chPack = 'Cuarta clase';
+    inscripcion.packClases = inscripcion.packClases.replace('Cuarta ', '');
+  }
+
+  switch (inscripcion.chPack) {
+    case 'Pack':
+      inscripcion.xdia = '';
+      inscripcion.asistencia = `${e.b}${e.s}Te anotaste para participar de todas las clases.${e.sf}`;
+    break;
+    case 'Primera clase':
+      inscripcion.xdia = '1D';
+      evento.ValorGeneral = evento.ValorGeneral1D;
+      inscripcion.asistencia = `${e.b}${e.s}Te anotaste para participar de la ${inscripcion.packClases}${e.sf}`;
+      evento.Fecha = inscripcion.packClases.replace('clase del ', '');
+    break;
+    case 'Segunda clase':
+      inscripcion.xdia = '1D';
+      evento.ValorGeneral = evento.ValorGeneral1D;
+      inscripcion.asistencia = `${e.b}${e.s}Te anotaste para participar de la ${inscripcion.packClases}${e.sf}`;
+      evento.Fecha = inscripcion.packClases.replace('clase del ', '');
+    break;
+    case 'Tercera clase':
+      inscripcion.xdia = '1D';
+      evento.ValorGeneral = evento.ValorGeneral1D;
+      inscripcion.asistencia = `${e.b}${e.s}Te anotaste para participar de la ${inscripcion.packClases}${e.sf}`;
+      evento.Fecha = inscripcion.packClases.replace('clase del ', '');
+    break;
+    case 'Cuarta clase':
+      inscripcion.xdia = '1D';
+      evento.ValorGeneral = evento.ValorGeneral1D;
+      inscripcion.asistencia = `${e.b}${e.s}Te anotaste para participar de la ${inscripcion.packClases}${e.sf}`;
+      evento.Fecha = inscripcion.packClases.replace('clase del', '');
+    break;
+    default:
+    break;
+  }
+}
+
+/*************************************************************
 *** TRAE LOS DATOS DE LA PLANILLA DEL FORMULARIO EN BASE   ***
 *** AL OBJETO DE PREGUNTAS SEGÚN EL TIPO DE EVENTO         ***
 *************************************************************/
@@ -174,6 +237,7 @@ function buscoPreguntas(preguntas, sheet, inscripcion, ActiveSheet, ActiveRow, e
   inscripcion.barrio = (buscoColumna(preguntas.barrio,sheet) != 0) ? valorPlanilla(preguntas.barrio) : "";
   inscripcion.telefono = (buscoColumna(preguntas.telefono,sheet) != 0) ? valorPlanilla(preguntas.telefono) : "";
   inscripcion.infoTK = (buscoColumna(preguntas.infoTK,sheet) != 0) ? valorPlanilla(preguntas.infoTK) : "";
+  inscripcion.packClases = (buscoColumna(preguntas.packClases,sheet) != 0) ? valorPlanilla(preguntas.packClases) : "";
   inscripcion.tkORegistro = (buscoColumna(preguntas.tkORegistro,sheet) != 0) ? valorPlanilla(preguntas.tkORegistro) : "";
   inscripcion.pais = (buscoColumna(preguntas.pais,sheet) != 0) ? valorPlanilla(preguntas.pais) : "Argentina";
   inscripcion.envioInfoTk = (buscoColumna(preguntas.envioInfoTk,sheet) != 0) ? valorPlanilla(preguntas.envioInfoTk) : "";
@@ -458,7 +522,7 @@ function envioMail(mail, inscripcion, evento){
     disponibilidad = `${e.f18B}Disponibilidad: ${e.fs}${e.f18}${e.s} ${evento.Disponibilidad} ${e.sf}${e.fs}${e.b}`;}
   let detalle = `${e.f22} ${e.b2} ${e.s}DETALLES DEL EVENTO: ${e.sf}${e.fs}${e.b}
   ${e.f18B}Nombre: ${e.fs}${e.f18}${e.s} ${evento.Nombre} ${e.sf}${e.fs}${e.b}
-  ${e.f18B}Fecha y hora: ${e.fs}${e.f18}${e.s} ${evento.Fecha} ${e.sf}${e.fs}${e.b}
+  ${e.f18B}Fecha y hora: ${e.fs}${e.f18}${e.s} ${evento.Fecha} ${evento.Hora}${e.sf}${e.fs}${e.b}
   ${e.f18B}Lugar: ${e.fs}${e.f18}${e.s}${evento.Lugar}${e.sf}${e.b}
   ${e.f18B}Maestr@: ${e.fs}${e.f18}${e.s}${evento.Maestrxs}${e.sf}${e.b} 
   ${disponibilidad}${e.b}${evento.Programa}${e.fs}`;
@@ -502,6 +566,7 @@ function checkMembresia(inscripcion, mail){
       correoPlanilla = datosTKZN[i][7].toString();
       correoPlanilla = correoPlanilla.trim().toLowerCase();
       if(correoPlanilla == inscripcion.mail){
+        Logger.log(correoPlanilla + ' - ' + inscripcion.mail);
         inscripcion.nombre = datosTKZN[i][1];
         inscripcion.apellido = datosTKZN[i][2];
         inscripcion.telefono = datosTKZN[i][6];
