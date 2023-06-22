@@ -292,4 +292,45 @@ function cargoNuevaTK(tkss, correo, nombre, apellido, tkElegida, celular, ciudad
   var activeRow = sheet.getLastRow();
   Logger.log('escribe nuevo en planilla' + ' fila: ' + activeRow);
   sheet.getRange(activeRow, 4).setBackground('yellow');
+  nuevoParticipante(correo, nombre, apellido, celular, ciudad, eleccionBoletin)
+}
+
+function nuevoParticipante(correo, nombre, apellido, celular, ciudad, eleccionBoletin){
+  let ss3 = SpreadsheetApp.openById('1WeqfjxRu3dr7HyemXOhtJbqnl0uAPFrlzH_ELrUH8nY');
+  let sheetDatosRegistro = ss3.getSheetByName('REGISTRO');
+  let encontrado = false;
+  encontrado = buscoPersona(correo);
+  if (encontrado == false){
+    let date = new Date();
+    let ahora = (date.toLocaleString('es-AR', {
+      day: 'numeric', // numeric, 2-digit
+      month: 'long', // numeric, 2-digit, long, short, narrow
+      hour: 'numeric', // numeric, 2-digit
+      minute: 'numeric', // numeric, 2-digit
+      second: 'numeric', // numeric, 2-digit
+    }));
+    if(eleccionBoletin.includes('Si, quiero mantenerme informado')){
+      boletin = 'Si';
+    } else {
+      boletin = 'No';
+    }
+    sheetDatosRegistro.appendRow([nombre, apellido, correo, correo, celular, ciudad, boletin, ahora]);
+  }
+}
+
+function buscoPersona(correo){
+  let ss3 = SpreadsheetApp.openById('1WeqfjxRu3dr7HyemXOhtJbqnl0uAPFrlzH_ELrUH8nY');
+  let sheetDatosRegistro = ss3.getSheetByName('REGISTRO');
+  let datosRegistro = sheetDatosRegistro.getRange(2, 1, sheetDatosRegistro.getLastRow(), 8).getValues();
+  let correoPlanilla = '';
+  let encontrado = false;
+  for(let i = 0;i<datosRegistro.length; i++){
+    correoPlanilla = datosRegistro[i][2].toString();
+    correoPlanilla = correoPlanilla.trim().toLowerCase();
+    if(correoPlanilla == correo){
+      encontrado = true;
+      break;
+    }
+  }
+  return encontrado;
 }
