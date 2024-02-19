@@ -96,9 +96,9 @@ var lineaPago2 = styleF18 + "<br><strong>AQUÍ TE COMPARTIMOS LOS DATOS BANCARIO
   "🔹 Centro de Med.kadampa Arg. - BBVA Banco Frances <br>🔹 CUIT 30-71440026-2<br>" + 
   "🔹 CBU: 0170134620000000330336<br>🔹 ALIAS: MENTE.KARMA.VACUIDAD <br>" +
   "🔸 TENÉ EN CUENTA QUE LOS PAGOS PUEDEN TARDAR EN PROCESARSE HASTA 48 HS.<br>Una vez procesado, recibirás un mail con todos los detalles." + finStyle + 
-  styleF22Morado + "<br><br><strong>IMPORTANTE: Por favor, una vez realizada tu transferencia envianos el comprobante a este mail, " +  "al mail: <a href='cbkn.adm@gmail.com'>Cbkn.adm@gmail.com</a> o compartilo al número de Whatsapp: +5491166633921." + " ¡DE LO CONTRARIO NO SERÁ REGISTRADO TU PAGO!</strong>" + finStyle + 
+  styleF22Morado + "<br><br><strong>IMPORTANTE: Por favor, una vez realizada tu transferencia envianos el comprobante a este mail, " +  "al mail: <a href='cbkn.adm@gmail.com'>Cbkn.adm@gmail.com</a> o compartilo al número de Whatsapp: 116663-3921." + " ¡DE LO CONTRARIO NO SERÁ REGISTRADO TU PAGO!</strong>" + finStyle + 
   "<br><br>Si te gustaría abonar en <strong>EFECTIVO </strong>, podés acercercarte directo a cualquiera de nuestras clases.<br>" +
-  "Por cualquier consulta o dificultad, también podés escribinos por WhatsApp al 11 6663-3921 o por las redes y te ayudamos a resolverlo.<br>" +
+  "Por cualquier consulta o dificultad, también podés escribinos por WhatsApp al 116663-3921 o por las redes y te ayudamos a resolverlo.<br>" +
   finStyle;
  
   // emailBody is for those devices that can't render HTML, is plain text
@@ -127,7 +127,7 @@ var lineaPago2 = styleF18 + "<br><strong>AQUÍ TE COMPARTIMOS LOS DATOS BANCARIO
 }
 function chequeoTkActiva(correo, nombre, apellido, eleccionTK, ciudad, celular, eleccionBoletin){
   var tkss = SpreadsheetApp.openById('1glxhF229H3fuWPrpzExpPX1YPcXhGrY1-mBw8TfToMk');
-  var sheetDatosTKS = tkss.getSheetByName("TK 2023");
+  var sheetDatosTKS = tkss.getSheetByName("TK 2024");
   var datosTKS = sheetDatosTKS.getRange(2, 2, sheetDatosTKS.getLastRow(), sheetDatosTKS.getLastColumn()).getValues();
   var membresiaTK = '';
   var nuevo = false;
@@ -207,7 +207,7 @@ function actualizoDatos(eleccionTK, ciudad, celular, eleccionBoletin, i, datosTK
     sheetDatosTKS.getRange(i+2, colTemporal).setValue(ciudad).setBackground(colorCambio);
   }
   if (datosTKS[i][9] != eleccionBoletin){
-    var boletin = abrevionewsletter(eleccionBoletin);
+    let boletin = abrevionewsletter(eleccionBoletin);
     colTemporal = datosTKS[0].indexOf('Newsletter')+2;
     sheetDatosTKS.getRange(i+2, colTemporal).setValue(boletin).setBackground(colorCambio);
   }
@@ -216,41 +216,104 @@ function actualizoDatos(eleccionTK, ciudad, celular, eleccionBoletin, i, datosTK
 }
 
 function cargoPrecios(){
-  var fpss = SpreadsheetApp.openById('13kG6VMFJtMI86uSwXlBzwykL8ILxvE-j0rmf1PrJU-M');
-  var sheetPreciosTKS = fpss.getSheetByName("Precios Abonos");
-  var preciosTKS = sheetPreciosTKS.getRange(3, 1, sheetPreciosTKS.getLastRow(), sheetPreciosTKS.getLastColumn()).getValues();
-  var datosPrecios = {
-      "TKClases1":0,
-      "TKClases1Boton":"",
-      "TKCorazon": 0,
-      "TKCorazonBoton":"",
-      "TKBenefactor": 0,
-      "TKBenefactorBoton":"",
-      "TKBenefactorplus": 0,
-      "TKBenefactorplusBoton":""
-}
+  let fpss = SpreadsheetApp.openById('1RfLwLB2yF04uF6FtQ0AUp21TQJViE9bqundAXL7Zi_4');
+  let sheetPreciosTKS = fpss.getSheetByName("Precios Abonos");
+  let preciosTKS = sheetPreciosTKS.getRange(3, 1, sheetPreciosTKS.getLastRow(), sheetPreciosTKS.getLastColumn()).getValues();
+  let datosPrecios = {};
+  let nuevosPrecios = {};
+  let diaActual = new Date();
+  
   for(var i = 0;i<preciosTKS.length; i++){
     switch (preciosTKS[i][0]){
-          case 'Tarjeta kadampa Clases':
-            datosPrecios.TKClases1 = preciosTKS[i][1];
-            datosPrecios.TKClases1Boton = preciosTKS[i][2];
-          break;
-          case 'Tarjeta kadampa corazón':
-            datosPrecios.TKCorazon = preciosTKS[i][1];
-            datosPrecios.TKCorazonBoton = preciosTKS[i][2];
-          break;   
-          case 'Tarjeta kadampa benefactor':
-            datosPrecios.TKBenefactor = preciosTKS[i][1];
-            datosPrecios.TKBenefactorBoton = preciosTKS[i][2];
-          break;          
-          case 'Tarjeta kadampa benefactor plus':
-            datosPrecios.TKBenefactorplus = preciosTKS[i][1];
-            datosPrecios.TKBenefactorplusBoton = preciosTKS[i][2];
-          break;          
-          default:
-          break;
-        }
+      case 'Tarjeta Kadampa clases1':
+        datosPrecios.TKClases1 = preciosTKS[i][1];
+      break;
+      case 'Tarjeta Kadampa clases2':
+        datosPrecios.TKClases2 = preciosTKS[i][1];
+      break;
+      case 'Tarjeta Kadampa clases3':
+        datosPrecios.TKClases3 = preciosTKS[i][1];
+      break;
+      case 'Tarjeta Kadampa corazón':
+        datosPrecios.TKCorazon = preciosTKS[i][1];
+      break;
+      case 'Tarjeta Kadampa benefactor':
+        datosPrecios.TKBenefactor = preciosTKS[i][1];
+      break;
+      case 'Clases1 Nuevo Precio':
+        nuevosPrecios.Clases1 = preciosTKS[i][1];
+      break;
+      case 'Clases2 Nuevo Precio':
+        nuevosPrecios.Clases2 = preciosTKS[i][1];
+      break;
+      case 'Clases3 Nuevo Precio':
+        nuevosPrecios.Clases3 = preciosTKS[i][1];
+      break;
+      case 'Corazón Nuevo Precio':
+        nuevosPrecios.Corazon = preciosTKS[i][1];
+      break;
+      case 'Benefactor Nuevo Precio':
+        nuevosPrecios.Benefactor = preciosTKS[i][1];
+      break;
+      case 'Precios Nuevos':
+        var fechaCambio = new Date(preciosTKS[i][1]);
+      break;
+      case 'Descripción':
+      break;
+      case '':
+      break;
+      default:
+        Logger.log('Error en planilla de precios');
+      break;
+    }
   }
+  if(nuevosPrecios.Clases1 != ''){
+    if (diaActual.getTime() >= fechaCambio.getTime()){
+      Logger.log('cambio de precios');
+          datosPrecios.TKClases1 =  nuevosPrecios.Clases1;
+          datosPrecios.TKClases2 =  nuevosPrecios.Clases2;
+          datosPrecios.TKClases3 =  nuevosPrecios.Clases3;
+          datosPrecios.TKCorazon = nuevosPrecios.Corazon;
+          datosPrecios.TKBenefactor = nuevosPrecios.Benefactor;
+          for(var i = 0;i<preciosTKS.length; i++){
+            switch (preciosTKS[i][0]){
+              case 'Tarjeta Kadampa clases1':
+                sheetPreciosTKS.getRange(i+3,2).setValue(nuevosPrecios.Clases1);
+              break;
+              case 'Tarjeta Kadampa clases2':
+                sheetPreciosTKS.getRange(i+3,2).setValue(nuevosPrecios.Clases2);
+              break;
+              case 'Tarjeta Kadampa clases3':
+                sheetPreciosTKS.getRange(i+3,2).setValue(nuevosPrecios.Clases3);
+              break;
+              case 'Tarjeta Kadampa corazón':
+                sheetPreciosTKS.getRange(i+3,2).setValue(nuevosPrecios.Corazon);
+              break;
+              case 'Tarjeta Kadampa benefactor':
+                sheetPreciosTKS.getRange(i+3,2).setValue(nuevosPrecios.Benefactor);
+              break;
+              case 'Clases1 Nuevo Precio':
+                sheetPreciosTKS.getRange(i+3,2).setValue('');
+              break;
+              case 'Clases2 Nuevo Precio':
+                sheetPreciosTKS.getRange(i+3,2).setValue('');
+              break;
+              case 'Clases3 Nuevo Precio':
+                sheetPreciosTKS.getRange(i+3,2).setValue('');
+              break;
+              case 'Corazón Nuevo Precio':
+                sheetPreciosTKS.getRange(i+3,2).setValue('');
+              break;
+              case 'Benefactor Nuevo Precio':
+                sheetPreciosTKS.getRange(i+3,2).setValue('');
+              break;
+              default:
+              break;
+            }
+          }
+    }
+  }
+  Logger.log(datosPrecios);
   return datosPrecios;
 }
 
@@ -265,9 +328,6 @@ function abrevioTK(eleccionTK){
       break;
       case 'TARJETA KADAMPA BENEFACTOR':
         tkElegida = "BEN"
-      break;  
-      case 'TARJETA KADAMPA BENEFACTOR PLUS':
-        tkElegida = "BEN+"
       break;   
       default:
       break;
@@ -286,7 +346,7 @@ function abrevionewsletter(eleccionBoletin){
 }
 
 function cargoNuevaTK(tkss, correo, nombre, apellido, tkElegida, celular, ciudad, eleccionBoletin){
-  var sheet = tkss.getSheetByName("TK 2023");
+  var sheet = tkss.getSheetByName("TK 2024");
   var boletin = abrevionewsletter(eleccionBoletin);
   sheet.appendRow(["", nombre, apellido, "CH", tkElegida, "", celular, correo, ciudad, boletin]);
   var activeRow = sheet.getLastRow();
